@@ -1,0 +1,9 @@
+outputs/*
+checkpoints/*
+cache/*
+*.log
+*.json
+data/*
+.gradio
+*.pyc
+*/__pycache__/*
