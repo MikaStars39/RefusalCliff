@@ -11,7 +11,9 @@ SYSTEM_PROMPT = """
 You are a helpful assistant.
 """
 
-async def process_single_item(client, item, model, max_tokens, temperature, request_time, max_retries=3, type="original_item"):
+async def process_single_item(
+    client, item, model, max_tokens, temperature, request_time, max_retries=3, type="original_item", instruction="",
+):
     """Process a single item with the OpenAI client"""
     retry_count = 0
     base_delay = 1.0
@@ -19,14 +21,14 @@ async def process_single_item(client, item, model, max_tokens, temperature, requ
     while retry_count <= max_retries:
         try:
             prompt = item["original_item"]["prompt"]
-            thinking = item[type]["thinking"]
+            thinking = item[type].get("thinking", None)
             
             # Use OpenAI client directly
             result = await client.chat.completions.create(
                 model=model,
                 messages=[
                     {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": prompt}
+                    {"role": "user", "content": instruction + prompt}
                 ],
                 extra_body={
                     "guided_regex": f"^{re.escape(thinking)}\\n</think>.*"
@@ -74,6 +76,7 @@ async def rewrite_thinking_async(
     max_concurrent: int = 5,
     max_retries: int = 3,
     type: str = "original_item",
+    instruction: str = "",
 ):
     """Async version using OpenAI client with parallel processing"""
 
@@ -95,7 +98,7 @@ async def rewrite_thinking_async(
     
     async def process_with_semaphore(idx, item):
         async with semaphore:
-            return await process_single_item(client, item, model, max_tokens, temperature, 0, max_retries, type)  # Set request_time to 0 in processing
+            return await process_single_item(client, item, model, max_tokens, temperature, 0, max_retries, type, instruction)  # Set request_time to 0 in processing
     
     # Create tasks with controlled timing
     ordered_results = [None] * len(data)
