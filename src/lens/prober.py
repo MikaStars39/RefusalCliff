@@ -118,8 +118,10 @@ def extract_hidden_states(
 def test_prober(
     json_path: str,
     ckpt_path: str = "/diancpfs/user/qingyu/persona/outputs/tensor/linear_prober.pt",
+    model_path: str = "deepseek-ai/DeepSeek-R1-Distill-Llama-8B",
     layer_index: int = None,
     max_items: int = None,
+    thinking_portion: float = 0.0,
     item_type: str = "original,safe_item",
 ):
 
@@ -141,11 +143,11 @@ def test_prober(
     prober.eval()
 
     model = AutoModelForCausalLM.from_pretrained(
-        "deepseek-ai/DeepSeek-R1-Distill-Llama-8B",
+        model_path,
         device_map="auto",
         torch_dtype=torch.bfloat16,
     )
-    tokenizer = AutoTokenizer.from_pretrained("deepseek-ai/DeepSeek-R1-Distill-Llama-8B")
+    tokenizer = AutoTokenizer.from_pretrained(model_path)
     with open(json_path, "r") as f:
         jbbench_distill_llama_8b = json.load(f)
 
@@ -167,8 +169,16 @@ def test_prober(
             # Check if this item_type exists in the item
             if item_type_name not in item:
                 continue
-                
-            thinking = item[item_type_name]["thinking"]
+            
+            if thinking_portion >= 0.0:
+                thinking = item[item_type_name]["thinking"]
+
+            if thinking_portion > 0.0:
+                thinking = tokenizer.encode(thinking)
+                len_thinking = len(thinking)
+                thinking = thinking[:int(len_thinking * thinking_portion)]
+                thinking = tokenizer.decode(thinking)
+
             close_marker = "\n</think>\n\n"
 
             messages_full = [
@@ -179,7 +189,7 @@ def test_prober(
                 tokenize=False,
                 add_generation_prompt=True
             )
-            full_input = chat_template + "\n\n" + thinking + close_marker
+            full_input = chat_template + "\n\n" + thinking + close_marker if thinking_portion >= 0.0 else chat_template
             inputs = tokenizer(full_input, return_tensors="pt").to(model.device)
 
             outputs = model(**inputs, output_hidden_states=True)
@@ -292,10 +302,9 @@ def test_prober(
     result_save_path = ckpt_path.replace('.pt', '_normalized_comparison_results.pt')
     torch.save(all_results, result_save_path)
     print(f"All normalized results saved to: {result_save_path}")
+    print(f"Max length of sequences: {max_seq_len_global}")
     
     plt.close()
-
-    
 
 
 def load_pt(
@@ -456,12 +465,3 @@ def train_linear_prober(
     )
 
     trainer.train(epochs=epochs, train_loader=train_loader, val_loader=val_loader, save_path=save_path)
-
-if __name__ == "__main__":
-    Fire({
-        "collect_refusal": collect_refusal,
-        "collect_non_refusal": collect_non_refusal,
-        "extract": extract_hidden_states,
-        "train": train_linear_prober,
-        "test": test_prober,
-    })

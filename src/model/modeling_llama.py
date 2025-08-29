@@ -56,7 +56,20 @@ def eager_attention_forward(
 
     attn_weights = torch.matmul(query, key_states.transpose(2, 3)) * scaling
     if attention_mask is not None:
-        causal_mask = attention_mask[:, :, :, : key_states.shape[-2]]
+        # Handle different attention mask shapes
+        if attention_mask.dim() == 2:
+            # For 2D masks (batch_size, seq_len), expand to 4D
+            batch_size, seq_len = attention_mask.shape
+            # Create causal mask
+            causal_mask = attention_mask.view(batch_size, 1, 1, seq_len)
+            causal_mask = causal_mask.expand(batch_size, 1, seq_len, seq_len)
+        elif attention_mask.dim() == 4:
+            # For 4D masks, use as-is but slice to key length
+            causal_mask = attention_mask[:, :, :, : key_states.shape[-2]]
+        else:
+            # For other dimensions, try to handle gracefully
+            causal_mask = attention_mask
+        
         attn_weights = attn_weights + causal_mask
 
     attn_weights = nn.functional.softmax(attn_weights, dim=-1, dtype=torch.float32).to(query.dtype)

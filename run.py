@@ -1,0 +1,34 @@
+from src.inference.gen import api_inference
+from src.inference.bench import process_data
+from src.lens.prober import (
+    test_prober, 
+    collect_refusal, 
+    collect_non_refusal, 
+    extract_hidden_states, 
+    train_linear_prober,
+
+)
+from src.lens.attn_head import (
+    trace_attn_head, 
+    ablating_attn_head
+)
+
+import fire
+
+if __name__ == "__main__":
+    fire.Fire(
+        {
+            # inference
+            "api_inference": api_inference,
+            "process_data": process_data,
+            # prober
+            "collect_refusal": collect_refusal,
+            "collect_non_refusal": collect_non_refusal,
+            "extract_hidden_states": extract_hidden_states,
+            "train_prober": train_linear_prober,
+            "test_prober": test_prober,
+            # attn head
+            "trace_attn_head": trace_attn_head,
+            "ablating_attn_head": ablating_attn_head,
+        }
+    )
