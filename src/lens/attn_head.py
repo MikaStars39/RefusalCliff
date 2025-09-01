@@ -42,7 +42,7 @@ def batch_probe(
         hidden_states = outputs.hidden_states[layer_idx]
         prober_output = torch.sigmoid(prober(
             hidden_states[:,position_idx,:].squeeze(0).to(torch.float32)
-        )).item()  # Shape: [seq_len, 1] or [seq_len]
+        )).sum().item()  # Shape: [seq_len, 1] or [seq_len]
         total_prober_output += prober_output
     
     del inputs, outputs, batch_text, batch_messages, hidden_states, prober_output
@@ -166,6 +166,12 @@ def ablating_attn_head(
     truncate_num: int = 128,
     top_n: int = 10,
     head_ablation_path: str = "outputs/tracing/llama_head_prober_outputs.json",
+    head_enhancement_path: str = "outputs/tracing/llama_head_prober_outputs_toxic.json",
+    max_new_tokens: int = 8,
+    temperature: float = 0.7,
+    do_sample: bool = True,
+    save_path: str = "outputs/tracing/llama_outputs.json",
+    item_type: str = "original_item",
 ):
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     model = AutoModelForCausalLM.from_pretrained(
@@ -177,10 +183,17 @@ def ablating_attn_head(
 
     with open(head_ablation_path, "r") as f:
         head_ablation_data = json.load(f)
-
+    
+    if head_enhancement_path is not None:
+        with open(head_enhancement_path, "r") as f:
+            head_enhancement_data = json.load(f)
 
     batch_messages = []
     thinking = []
+
+    for item in data:
+        batch_messages.append([{"role": "user", "content": item["original_item"]["prompt"]}])
+        thinking.append(item[item_type]["thinking"])
 
     if prober_ckpt_path is not None:
         from src.lens.prober import LinearProber
@@ -193,41 +206,65 @@ def ablating_attn_head(
         prober = LinearProber(in_dim, hidden_dim).to(model.device)
         prober.load_state_dict(ckpt["state_dict"])
         prober.eval()
-    
-    for item in data:
-        batch_messages.append([{"role": "user", "content": item["original_item"]["prompt"]}])
-        thinking.append(item["original_item"]["thinking"])
 
-    prober_output = batch_probe(
-        tokenizer=tokenizer,
-        model=model,
-        prober=prober,
-        messages=batch_messages,
-        thinking=thinking,
-        batch_size=batch_size,
-        position_idx=position_idx,
-        layer_idx=layer_idx,
-    )
+        prober_output = batch_probe(
+            tokenizer=tokenizer,
+            model=model,
+            prober=prober,
+            messages=batch_messages,
+            thinking=thinking,
+            batch_size=batch_size,
+            position_idx=position_idx,
+            layer_idx=layer_idx,
+        )
 
-    print(f"original prober output: {prober_output}")
+        print(f"original prober output: {prober_output}")
 
-    enable_monkey_patched_llama(model)
-    for idx in range(top_n):
-        layer_idx = head_ablation_data[idx]["layer_idx"]
-        head_idx = head_ablation_data[idx]["head_idx"]
-        add_property(model, "self_attn", "scale", {"heads": {layer_idx: [head_idx]}, "values": 0.01})
+        enable_monkey_patched_llama(model)
+        for idx in range(top_n):
+            layer_idx = head_ablation_data[idx]["layer_idx"]
+            head_idx = head_ablation_data[idx]["head_idx"]
+            add_property(model, "self_attn", "scale", {"heads": {layer_idx: [head_idx]}, "values": 0.01})
+            if head_enhancement_data is not None:
+                layer_idx = head_enhancement_data[len(head_ablation_data) - idx - 1]["layer_idx"]
+                head_idx = head_enhancement_data[len(head_ablation_data) - idx - 1]["head_idx"]
+                add_property(model, "self_attn", "scale", {"heads": {layer_idx: [head_idx]}, "values": 100.0})
 
-    prober_output = batch_probe(
-        tokenizer=tokenizer,
-        model=model,
-        prober=prober,
-        messages=batch_messages,
-        thinking=thinking,
-        batch_size=batch_size,
-        position_idx=position_idx,
-        layer_idx=layer_idx,
-    )
-    print(f"ablating prober output: {prober_output}")
+        prober_output = batch_probe(
+            tokenizer=tokenizer,
+            model=model,
+            prober=prober,
+            messages=batch_messages,
+            thinking=thinking,
+            batch_size=batch_size,
+            position_idx=position_idx,
+            layer_idx=layer_idx,
+        )
+        print(f"ablating prober output: {prober_output}")
+    else:
+        all_outputs = []
+        outputs = batch_gen(
+            tokenizer=tokenizer, 
+            model=model, 
+            messages=batch_messages, 
+            thinking=thinking,
+            batch_size=batch_size,
+            max_new_tokens=max_new_tokens,
+            temperature=temperature,
+            do_sample=do_sample,
+        )
+        for idx, item in enumerate(outputs):
+            all_outputs.append(
+                {
+                    "prompt": data[idx]["original_item"]["prompt"],
+                    "thinking": data[idx]["original_item"]["thinking"],
+                    "response": item,
+                }
+            )
+        with open(save_path, "w") as f:
+            json.dump(all_outputs, f, indent=4)
+
+
 
 @torch.no_grad()
 def trace_attn_head(
@@ -242,7 +279,7 @@ def trace_attn_head(
     do_sample: bool = True,
     truncate_num: int = 128,
     save_path: str = "outputs/tracing/llama_outputs.json",
-    state_save_path: str = "outputs/tracing/llama_all_hidden_states.pt",
+    item_type: str = "original_item",
 ):
     
     tokenizer = AutoTokenizer.from_pretrained(model_name)
@@ -273,7 +310,7 @@ def trace_attn_head(
     
     for item in data:
         batch_messages.append([{"role": "user", "content": item["original_item"]["prompt"]}])
-        thinking.append(item["original_item"]["thinking"])
+        thinking.append(item[item_type]["thinking"])
 
     for per_layer_idx in tqdm(range(model.config.num_hidden_layers)):
         for per_head_idx in range(model.config.num_attention_heads):
@@ -309,7 +346,7 @@ def trace_attn_head(
                     all_outputs.append(
                         {
                             "prompt": data[idx]["original_item"]["prompt"],
-                            "thinking": data[idx]["original_item"]["thinking"],
+                            "thinking": data[idx][item_type]["thinking"],
                             "response": item,
                         }
                     )

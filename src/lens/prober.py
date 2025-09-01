@@ -24,6 +24,7 @@ def collect_refusal(
     with open(save_path, "w") as f:
         json.dump(refusal_list, f, indent=4)
 
+
 def collect_non_refusal(
     json_path: str,
     save_path: str,
@@ -38,7 +39,6 @@ def collect_non_refusal(
         
     with open(save_path, "w") as f:
         json.dump(refusal_list, f, indent=4)
-
 
 
 @torch.no_grad()
