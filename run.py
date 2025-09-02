@@ -6,11 +6,14 @@ from src.lens.prober import (
     collect_non_refusal, 
     extract_hidden_states, 
     train_linear_prober,
-
+    test_prober_by_layers,
 )
 from src.lens.attn_head import (
     trace_attn_head, 
     ablating_attn_head
+)
+from src.lens.gen import (
+    ablating_head_generation,
 )
 
 import fire
@@ -27,8 +30,10 @@ if __name__ == "__main__":
             "extract_hidden_states": extract_hidden_states,
             "train_prober": train_linear_prober,
             "test_prober": test_prober,
+            "test_prober_by_layers": test_prober_by_layers,
             # attn head
             "trace_attn_head": trace_attn_head,
             "ablating_attn_head": ablating_attn_head,
+            "ablating_head_generation": ablating_head_generation,
         }
     )

@@ -307,6 +307,209 @@ def test_prober(
     plt.close()
 
 
+@torch.no_grad()
+def test_prober_by_layers(
+    json_path: str,
+    ckpt_path: str = "/diancpfs/user/qingyu/persona/outputs/tensor/linear_prober.pt",
+    model_path: str = "deepseek-ai/DeepSeek-R1-Distill-Llama-8B",
+    max_items: int = None,
+    thinking_portion: float = 0.0,
+    item_type: str = "original_item",
+    use_cache: bool = True,
+):
+    """
+    Test prober on all layers and create a heatmap visualization.
+    
+    Args:
+        json_path: Path to the JSON file containing the data
+        ckpt_path: Path to the trained prober checkpoint
+        model_path: Path to the model
+        max_items: Maximum number of items to process
+        thinking_portion: Portion of thinking to include (0.0 to 1.0)
+        item_type: Type of item to process (e.g., "original_item", "safe_item")
+        use_cache: Whether to use cached results if available
+    """
+    
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    print(f"Processing item type: {item_type}")
+
+    # Check if cached results exist
+    results_save_path = ckpt_path.replace('.pt', f'_layer_results_{item_type}.pt')
+    if use_cache and os.path.exists(results_save_path):
+        print(f"Loading cached results from: {results_save_path}")
+        layer_results = torch.load(results_save_path, map_location='cpu')
+        
+        # Create heatmap from cached results
+        _create_layer_heatmap(layer_results, ckpt_path, item_type)
+        
+        print(f"Using cached results with shape: {layer_results.shape}")
+        return f"Completed using cached results. Shape: {layer_results.shape}"
+
+    # Load checkpoint
+    ckpt = torch.load(ckpt_path, map_location=device)
+    in_dim = ckpt["in_dim"]
+    hidden_dim = 1024  # use the same as training
+
+    # Rebuild model and load weights
+    prober = LinearProber(in_dim, hidden_dim).to(device)
+    prober.load_state_dict(ckpt["state_dict"])
+    prober.eval()
+
+    # Load model and tokenizer
+    model = AutoModelForCausalLM.from_pretrained(
+        model_path,
+        device_map="auto",
+        torch_dtype=torch.bfloat16,
+    )
+    tokenizer = AutoTokenizer.from_pretrained(model_path)
+    
+    with open(json_path, "r") as f:
+        data = json.load(f)
+
+    num_layers = model.config.num_hidden_layers
+    print(f"Model has {num_layers} layers")
+    
+    # Store results for all layers: [num_layers, 100]
+    layer_results = torch.zeros(num_layers, 100)
+    
+    for layer_idx in tqdm(range(num_layers), desc="Processing layers"):
+        sequences = []
+        max_seq_len = 0
+        
+        for idx, item in enumerate(data):
+            if max_items is not None and idx >= max_items:
+                break
+                
+            prompt = item["original_item"]["prompt"]
+            
+            # Check if this item_type exists in the item
+            if item_type not in item:
+                continue
+            
+            if thinking_portion >= 0.0:
+                thinking = item[item_type]["thinking"]
+
+            if thinking_portion > 0.0:
+                thinking = tokenizer.encode(thinking)
+                len_thinking = len(thinking)
+                thinking = thinking[:int(len_thinking * thinking_portion)]
+                thinking = tokenizer.decode(thinking)
+
+            close_marker = "\n</think>\n\n"
+
+            messages_full = [
+                {"role": "user", "content": prompt},
+            ]
+            chat_template = tokenizer.apply_chat_template(
+                messages_full,
+                tokenize=False,
+                add_generation_prompt=True
+            )
+            full_input = chat_template + "\n\n" + thinking + close_marker if thinking_portion >= 0.0 else chat_template
+            inputs = tokenizer(full_input, return_tensors="pt").to(model.device)
+
+            outputs = model(**inputs, output_hidden_states=True)
+
+            hidden_states = outputs.hidden_states
+            layer_h = hidden_states[layer_idx].to(torch.float32)
+            seq_len = layer_h.shape[1]
+            
+            if seq_len == 0:
+                continue
+
+            # Get prober result 
+            prober_output = torch.sigmoid(prober(layer_h.squeeze(0)))  # Shape: [seq_len, 1] or [seq_len]
+            
+            # Ensure prober_output is 1D: [seq_len]
+            if prober_output.dim() > 1:
+                prober_output = prober_output.squeeze(-1)  # Make it 1D: [seq_len]
+            
+            sequences.append(prober_output.cpu())
+            max_seq_len = max(max_seq_len, len(prober_output))
+
+        if len(sequences) == 0:
+            print(f"No valid results found for layer {layer_idx}")
+            continue
+
+        # Align sequences to the right (tail-aligned) and average
+        aligned_sequences = torch.zeros(len(sequences), max_seq_len)
+        
+        for i, seq in enumerate(sequences):
+            seq_len = len(seq)
+            # Align to the right (tail-aligned): put sequence at the end
+            aligned_sequences[i, -seq_len:] = seq
+        
+        # Calculate average across all sequences
+        final_result = aligned_sequences.mean(dim=0)  # [max_seq_len]
+        
+        # Normalize to 100 points using interpolation
+        if len(final_result) != 100:
+            import numpy as np
+            from scipy import interpolate
+            
+            # Convert to numpy
+            final_result_np = final_result.numpy()
+            
+            # Create original x coordinates (0 to len-1)
+            x_old = np.linspace(0, len(final_result_np)-1, len(final_result_np))
+            # Create new x coordinates (0 to 99, evenly spaced)
+            x_new = np.linspace(0, len(final_result_np)-1, 100)
+            
+            # Use cubic spline interpolation for smoother curves
+            f = interpolate.interp1d(x_old, final_result_np, kind='cubic', 
+                                   bounds_error=False, fill_value='extrapolate')
+            final_result_normalized = torch.tensor(f(x_new), dtype=torch.float32)
+        else:
+            final_result_normalized = final_result
+            
+        layer_results[layer_idx] = final_result_normalized
+        print(f"Processed layer {layer_idx}, {len(sequences)} sequences, normalized to 100 points")
+
+    # Create heatmap visualization
+    _create_layer_heatmap(layer_results, ckpt_path, item_type)
+    
+    # Save the results tensor
+    results_save_path = ckpt_path.replace('.pt', f'_layer_results_{item_type}.pt')
+    torch.save(layer_results, results_save_path)
+    print(f"Layer results tensor saved to: {results_save_path}")
+    
+    return f"Completed processing {num_layers} layers. Results saved to: {results_save_path}"
+
+
+def _create_layer_heatmap(layer_results, ckpt_path, item_type):
+    """Helper function to create and save heatmap visualization."""
+    import matplotlib.pyplot as plt
+    import numpy as np
+    
+    plt.figure(figsize=(20, 12))
+    
+    # Create the heatmap with white=0, blue=1
+    im = plt.imshow(layer_results.numpy(), cmap='Blues', aspect='auto', vmin=0, vmax=1)
+    
+    # Set labels and title
+    plt.xlabel('Position (0-99)', fontsize=14)
+    plt.ylabel('Layer Index', fontsize=14)
+    plt.title(f'Prober Results Heatmap - {item_type} (White=0, Blue=1)', fontsize=16)
+    
+    # Add colorbar
+    cbar = plt.colorbar(im, shrink=0.8)
+    cbar.set_label('Sigmoid Output', fontsize=12)
+    
+    # Set ticks
+    plt.xticks(range(0, 100, 10))
+    plt.yticks(range(0, layer_results.shape[0], 2))
+    
+    # Add grid for better readability
+    plt.grid(True, alpha=0.3, linestyle='--')
+    
+    # Save the heatmap
+    heatmap_save_path = ckpt_path.replace('.pt', f'_layer_heatmap_{item_type}.png')
+    plt.savefig(heatmap_save_path, dpi=300, bbox_inches='tight')
+    print(f"Layer heatmap saved to: {heatmap_save_path}")
+    
+    plt.close()
+
+
 def load_pt(
     path: str = "outputs/tensor/jbb_tensor_list_original.pt",
 ) -> torch.Tensor:
