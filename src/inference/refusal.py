@@ -68,6 +68,7 @@ refusal_words = [
     "secure",
     "protected",
     "ensured",
+    "diversity",
 ]
 
 def process_chunk(data_chunk, item_type):

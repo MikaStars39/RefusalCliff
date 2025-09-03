@@ -38,6 +38,67 @@ from transformers.models.llama.modeling_llama import (
 
 logger = logging.get_logger(__name__)
 
+def pasta_attention_steering(attention_logits, heads_to_steer, emphasized_token_indices, alpha=0.01):
+    """
+    Modify attention logits for specific heads in a batch, following the PASTA method.
+
+    Args:
+        attention_logits (torch.Tensor): Raw attention logits (before softmax),
+            shape (batch_size, num_heads, query_seq_len, key_seq_len).
+        heads_to_steer (list or int): Index or indices of heads to steer.
+        emphasized_token_indices (list): Indices of tokens in the key sequence to emphasize.
+        alpha (float): Scaling factor for non-emphasized tokens.
+
+    Returns:
+        torch.Tensor: Modified attention logits tensor.
+    """
+    if attention_logits.dim() != 4:
+        raise ValueError("Input tensor must be 4D (batch_size, num_heads, query_seq_len, key_seq_len).")
+
+    # Ensure alpha is not too small to avoid completely zeroing out attention
+    alpha = max(alpha, 0.01)  # Minimum alpha to preserve some attention
+    
+    # Ensure heads_to_steer is a list
+    if isinstance(heads_to_steer, int):
+        heads_to_steer = [heads_to_steer]
+
+    # Validate head indices
+    num_heads = attention_logits.shape[1]
+    heads_to_steer = [h for h in heads_to_steer if 0 <= h < num_heads]
+    if not heads_to_steer:
+        return attention_logits  # No valid heads to steer
+
+    # Clone logits to avoid in-place modification
+    steered_logits = attention_logits.clone()
+
+    # Create scaling factors: 1.0 for emphasized tokens, alpha for others
+    key_seq_len = attention_logits.shape[-1]
+    device = attention_logits.device
+
+    scaling_factors = torch.full((key_seq_len,), alpha, device=device, dtype=steered_logits.dtype)
+    
+    # Ensure emphasized_token_indices are within bounds
+    if isinstance(emphasized_token_indices, torch.Tensor):
+        valid_indices = emphasized_token_indices[emphasized_token_indices < key_seq_len]
+    else:
+        valid_indices = torch.tensor([idx for idx in emphasized_token_indices if 0 <= idx < key_seq_len], device=device)
+    
+    # Only proceed if we have valid indices to emphasize
+    if len(valid_indices) > 0:
+        scaling_factors.scatter_(0, valid_indices, 1.0)
+
+        # Select logits for the target heads
+        target_logits = steered_logits[:, heads_to_steer, :, :]
+
+        # Apply scaling factors (broadcasting over the last dimension)
+        steered_target_logits = target_logits + scaling_factors
+
+        # Put the modified logits back
+        steered_logits[:, heads_to_steer, :, :] = steered_target_logits
+
+    return steered_logits
+
+
 def eager_attention_forward(
     module: nn.Module,
     query: torch.Tensor,
@@ -47,7 +108,6 @@ def eager_attention_forward(
     scaling: float,
     dropout: float = 0.0,
     scale: dict = None,
-    enhance_scale: dict = None,
     input_shape: tuple = None,
     **kwargs: Unpack[TransformersKwargs],
 ):  
@@ -56,13 +116,41 @@ def eager_attention_forward(
 
     attn_weights = torch.matmul(query, key_states.transpose(2, 3)) * scaling
 
-    # if scale is not None and scale["values"] == -1:
-    #     head_idx = torch.tensor(scale["heads"]).to(query.device)
-    #     attn_weights[:, head_idx, :, :] = attn_weights[:, head_idx, :, :] * 0.01
+    if scale is not None:
+        head_idx = torch.tensor(scale["heads"]).to(query.device)
+        
+        # Check if we have thinking positions stored in the module
+        thinking_positions = getattr(module, 'thinking_positions', None)
+        
+        if thinking_positions is not None:
+            # Use actual thinking token positions from the stored data
+            batch_size = attn_weights.shape[0]
+            
+            # Check if this is prefill phase (square attention matrix)
+            query_len = attn_weights.shape[-2]
+            key_len = attn_weights.shape[-1]
+            
+            if query_len == key_len:
+                # This is prefill phase, save the sequence length for later use
+                setattr(module, 'prefill_seq_len', key_len)
+                prefill_seq_len = key_len
+            else:
+                # This is generation phase, check if we have saved prefill length
+                prefill_seq_len = getattr(module, 'prefill_seq_len', None)
+            
+            for batch_idx in range(batch_size):
+                if batch_idx < len(thinking_positions) and thinking_positions[batch_idx] is not None:
+                    start_pos, end_pos = thinking_positions[batch_idx]
 
-    # if enhance_scale is not None and enhance_scale["values"] == -1:
-    #     head_idx = torch.tensor(enhance_scale["heads"]).to(query.device)
-    #     attn_weights[:, head_idx, :, :] = torch.zeros_like(attn_weights[:, head_idx, :, :])
+                    start_pos = prefill_seq_len - start_pos
+                    end_pos = prefill_seq_len - end_pos
+                    
+                    thinking_indices = torch.arange(start_pos, end_pos, device=query.device)
+                    # Apply steering only to this batch item
+                    batch_attn_weights = attn_weights[batch_idx:batch_idx+1]
+                    for head in head_idx:
+                        batch_attn_weights[:, head, :, thinking_indices] += -1e3
+                    attn_weights[batch_idx:batch_idx+1] = batch_attn_weights
 
     if attention_mask is not None:
         # Handle different attention mask shapes
@@ -84,29 +172,9 @@ def eager_attention_forward(
     attn_weights = nn.functional.softmax(attn_weights, dim=-1, dtype=torch.float32).to(query.dtype)
     attn_weights = nn.functional.dropout(attn_weights, p=dropout, training=module.training)
 
-    # if scale is not None and scale["values"] == -1:
-    #     head_idx = torch.tensor(scale["heads"]).to(query.device)
-    #     position_mask = torch.arange(attn_weights.shape[-1], device=attn_weights.device) >= 32
-    #     attn_weights[:, head_idx, :, :] = attn_weights[:, head_idx, :, :].masked_fill(position_mask, float(0.0))
-
     attn_output = torch.matmul(attn_weights, value_states)
-    attn_output_original = attn_output.transpose(1, 2).contiguous()
-    attn_output_original = attn_output_original.reshape(*input_shape, -1).contiguous()
-
-    attn_original_norm = attn_output_original.norm(dim=-1, keepdim=True)
-    del attn_output_original
-
-    if scale is not None and scale["values"] > 0:
-        head_idx = torch.tensor(scale["heads"]).to(query.device)
-        attn_output[:, head_idx, :, :] = attn_output[:, head_idx, :, :] * scale["values"]
-    if enhance_scale is not None and enhance_scale["values"] > 0:
-        head_idx = torch.tensor(enhance_scale["heads"]).to(query.device)
-        attn_output[:, head_idx, :, :] = attn_output[:, head_idx, :, :] * enhance_scale["values"]
-
     attn_output = attn_output.transpose(1, 2).contiguous()
     attn_output = attn_output.reshape(*input_shape, -1).contiguous()
-    attn_output_norm = attn_output.norm(dim=-1, keepdim=True)
-    attn_output = (attn_original_norm / attn_output_norm) * attn_output
 
     return attn_output, attn_weights
 
@@ -151,7 +219,6 @@ class LlamaAttention(nn.Module):
         
         # check if self has scale
         scale = None
-        enhance_scale = None
         if hasattr(self, "scale"):
             scale = self.scale
             # check if self.layer_idx in scale["heads"].keys()
@@ -163,15 +230,6 @@ class LlamaAttention(nn.Module):
                 }
             else:
                 scale = None
-        if hasattr(self, "enhance_scale"):
-            enhance_scale = self.enhance_scale
-            if self.layer_idx in enhance_scale["heads"].keys():
-                enhance_scale = {
-                    "heads": enhance_scale["heads"][self.layer_idx],
-                    "values": enhance_scale["values"]
-                }
-            else:
-                enhance_scale = None
 
         query_states = self.q_proj(hidden_states).view(hidden_shape).transpose(1, 2)
         key_states = self.k_proj(hidden_states).view(hidden_shape).transpose(1, 2)
@@ -196,7 +254,6 @@ class LlamaAttention(nn.Module):
             scaling=self.scaling,
             dropout=0.0 if not self.training else self.attention_dropout,
             scale=scale,
-            enhance_scale=enhance_scale,
             input_shape=input_shape,
             **kwargs,
         )
@@ -308,3 +365,18 @@ def clean_property(model, module_name, property_name):
                 delattr(model._modules[name], property_name)
     
     recursive_patch(model)
+
+def set_thinking_scale_heads(model, head_indices, layer_idx=None):
+    """Set which attention heads should have thinking tokens scaled down
+    
+    Args:
+        model: The model to modify
+        head_indices: List of head indices to scale (e.g., [0, 1, 5, 10])
+        layer_idx: If specified, only set for that layer. If None, set for all layers.
+    """
+    if layer_idx is not None:
+        # Set for specific layer
+        add_property(model, f"layers.{layer_idx}.self_attn", "thinking_scale_heads", head_indices)
+    else:
+        # Set for all attention layers
+        add_property(model, "self_attn", "thinking_scale_heads", head_indices)

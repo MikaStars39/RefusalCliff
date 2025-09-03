@@ -3,48 +3,6 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 from tqdm import tqdm
 from ..model.modeling_llama import enable_monkey_patched_llama, add_property
 
-def pasta_attention_steering(attention_logits, heads_to_steer, emphasized_token_indices, alpha=0.01):
-    """
-    Modify attention logits for specific heads in a batch, following the PASTA method.
-
-    Args:
-        attention_logits (torch.Tensor): Raw attention logits (before softmax),
-            shape (batch_size, num_heads, query_seq_len, key_seq_len).
-        heads_to_steer (list or int): Index or indices of heads to steer.
-        emphasized_token_indices (list): Indices of tokens in the key sequence to emphasize.
-        alpha (float): Scaling factor for non-emphasized tokens.
-
-    Returns:
-        torch.Tensor: Modified attention logits tensor.
-    """
-    if attention_logits.dim() != 4:
-        raise ValueError("Input tensor must be 4D (batch_size, num_heads, query_seq_len, key_seq_len).")
-
-    # Ensure heads_to_steer is a list
-    if isinstance(heads_to_steer, int):
-        heads_to_steer = [heads_to_steer]
-
-    # Clone logits to avoid in-place modification
-    steered_logits = attention_logits.clone()
-
-    # Create scaling factors: 1.0 for emphasized tokens, alpha for others
-    key_seq_len = attention_logits.shape[-1]
-    device = attention_logits.device
-
-    scaling_factors = torch.full((key_seq_len,), alpha, device=device, dtype=steered_logits.dtype)
-    scaling_factors.scatter_(0, torch.tensor(emphasized_token_indices, device=device), 1.0)
-
-    # Select logits for the target heads
-    target_logits = steered_logits[:, heads_to_steer, :, :]
-
-    # Apply scaling factors (broadcasting over the last dimension)
-    steered_target_logits = target_logits * scaling_factors
-
-    # Put the modified logits back
-    steered_logits[:, heads_to_steer, :, :] = steered_target_logits
-
-    return steered_logits
-
 def add_scale(
     model: AutoModelForCausalLM,
     head_ablation_data: list,
@@ -169,13 +127,32 @@ def batch_gen(
     
         batch_messages = messages[idx:idx + batch_size]
         batch_text = []
+        thinking_positions = []  # Store thinking start/end positions for each item in batch
+        
         for i, message_list in enumerate(batch_messages):
-            text = tokenizer.apply_chat_template(
+            # Get the base prompt without thinking
+            base_text = tokenizer.apply_chat_template(
                 message_list,
                 add_generation_prompt=True,
                 tokenize=False,
-            ) + (thinking[idx + i] + "\n</think>\n\n" if thinking is not None else "")
-            batch_text.append(text)
+            )
+            
+            if thinking is not None and thinking[idx + i]:
+                # Calculate thinking positions
+                base_tokens = tokenizer(base_text, return_tensors="pt")["input_ids"]
+                thinking_text = thinking[idx + i] + "\n</think>\n\n"
+                full_text = base_text + thinking_text
+                full_tokens = tokenizer(full_text, return_tensors="pt")["input_ids"]
+                
+                thinking_start = full_tokens.shape[-1] - base_tokens.shape[-1]
+                thinking_end = 4
+                thinking_positions.append((thinking_start, thinking_end))
+                
+                batch_text.append(full_text)
+            else:
+                print("No thinking for this item")
+                thinking_positions.append(None)  # No thinking for this item
+                batch_text.append(base_text)
         
         inputs = tokenizer(
             batch_text,
@@ -183,6 +160,27 @@ def batch_gen(
             truncation=True,
             return_tensors="pt",
         ).to(model.device)
+        
+        # Add thinking positions to model for attention scaling
+        # We need to adjust positions for padding
+        # adjusted_thinking_positions = []
+        # for i, pos in enumerate(thinking_positions):
+        #     if pos is not None:
+        #         # Calculate padding offset for this sequence
+        #         seq_len = inputs["attention_mask"][i].sum().item()
+        #         max_len = inputs["input_ids"].shape[-1]
+        #         padding_offset = max_len - seq_len
+                
+        #         # Adjust positions accounting for left padding
+        #         adj_start = pos[0] + padding_offset
+        #         adj_end = pos[1] + padding_offset
+        #         adjusted_thinking_positions.append((adj_start, adj_end))
+        #     else:
+        #         adjusted_thinking_positions.append(None)
+        
+        # Store thinking positions in model for access during forward pass
+        from src.model.modeling_llama import add_property
+        add_property(model, "self_attn", "thinking_positions", thinking_positions)
 
         generation_kwargs = {
             **inputs,

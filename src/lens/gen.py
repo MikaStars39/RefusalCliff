@@ -3,7 +3,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 import json
 from src.lens.utils import add_scale, batch_gen
 from src.inference.refusal import refusal_words
-from src.model.modeling_llama import add_property
+from src.model.modeling_llama import add_property, set_thinking_scale_heads
 
 @torch.no_grad()
 def ablating_head_generation(
@@ -40,6 +40,7 @@ def ablating_head_generation(
             head_enhancement_data = json.load(f)[-top_n_enhancement:]
     
     add_scale(model, head_ablation_data, ablation_value, head_enhancement_data, enhancement_value)
+    
     batch_messages = []
     thinking = []
 
@@ -47,7 +48,7 @@ def ablating_head_generation(
         batch_messages.append([{"role": "user", "content": item["original_item"]["prompt"]}])
         thinking.append(item[item_type]["thinking"])
         if thinking_portion < 0.0:
-            thinking[-1] = ""
+            thinking[-1] = " "
         elif thinking_portion > 0.0:
             thinking[-1] = thinking[-1][:int(len(thinking[-1]) * thinking_portion)]
 
@@ -77,7 +78,7 @@ def ablating_head_generation(
     # check how many refusals
     count_refusal = 0
     for item in all_outputs:
-        if any(word in item["response"] for word in refusal_words):
+        if any(word.lower() in item["response"].lower() for word in refusal_words):
             count_refusal += 1
     
     print(f"Total refusals: {count_refusal / len(all_outputs)}")
