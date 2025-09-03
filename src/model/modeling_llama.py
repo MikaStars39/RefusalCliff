@@ -24,17 +24,16 @@ from torch import nn
 import types
 
 from transformers.cache_utils import Cache
-from transformers.modeling_utils import ALL_ATTENTION_FUNCTIONS
 from transformers.processing_utils import Unpack
 from transformers.utils import TransformersKwargs, logging
 from transformers.models.llama.configuration_llama import LlamaConfig
+from transformers.modeling_layers import GradientCheckpointingLayer
 
 from transformers.models.llama.modeling_llama import (
-    LlamaRMSNorm, 
-    LlamaRotaryEmbedding,
     apply_rotary_pos_emb,
-    LlamaMLP,
     repeat_kv,
+    LlamaMLP,
+    LlamaRMSNorm,
 )
 
 logger = logging.get_logger(__name__)
@@ -48,13 +47,23 @@ def eager_attention_forward(
     scaling: float,
     dropout: float = 0.0,
     scale: dict = None,
+    enhance_scale: dict = None,
+    input_shape: tuple = None,
     **kwargs: Unpack[TransformersKwargs],
 ):  
-    
     key_states = repeat_kv(key, module.num_key_value_groups)
     value_states = repeat_kv(value, module.num_key_value_groups)
 
     attn_weights = torch.matmul(query, key_states.transpose(2, 3)) * scaling
+
+    # if scale is not None and scale["values"] == -1:
+    #     head_idx = torch.tensor(scale["heads"]).to(query.device)
+    #     attn_weights[:, head_idx, :, :] = attn_weights[:, head_idx, :, :] * 0.01
+
+    # if enhance_scale is not None and enhance_scale["values"] == -1:
+    #     head_idx = torch.tensor(enhance_scale["heads"]).to(query.device)
+    #     attn_weights[:, head_idx, :, :] = torch.zeros_like(attn_weights[:, head_idx, :, :])
+
     if attention_mask is not None:
         # Handle different attention mask shapes
         if attention_mask.dim() == 2:
@@ -75,12 +84,29 @@ def eager_attention_forward(
     attn_weights = nn.functional.softmax(attn_weights, dim=-1, dtype=torch.float32).to(query.dtype)
     attn_weights = nn.functional.dropout(attn_weights, p=dropout, training=module.training)
 
-    if scale is not None:
-        head_idx = torch.tensor(scale["heads"]).to(query.device)
-        attn_weights[:, head_idx, :, :] = attn_weights[:, head_idx, :, :] * scale["values"]
+    # if scale is not None and scale["values"] == -1:
+    #     head_idx = torch.tensor(scale["heads"]).to(query.device)
+    #     position_mask = torch.arange(attn_weights.shape[-1], device=attn_weights.device) >= 32
+    #     attn_weights[:, head_idx, :, :] = attn_weights[:, head_idx, :, :].masked_fill(position_mask, float(0.0))
 
     attn_output = torch.matmul(attn_weights, value_states)
+    attn_output_original = attn_output.transpose(1, 2).contiguous()
+    attn_output_original = attn_output_original.reshape(*input_shape, -1).contiguous()
+
+    attn_original_norm = attn_output_original.norm(dim=-1, keepdim=True)
+    del attn_output_original
+
+    if scale is not None and scale["values"] > 0:
+        head_idx = torch.tensor(scale["heads"]).to(query.device)
+        attn_output[:, head_idx, :, :] = attn_output[:, head_idx, :, :] * scale["values"]
+    if enhance_scale is not None and enhance_scale["values"] > 0:
+        head_idx = torch.tensor(enhance_scale["heads"]).to(query.device)
+        attn_output[:, head_idx, :, :] = attn_output[:, head_idx, :, :] * enhance_scale["values"]
+
     attn_output = attn_output.transpose(1, 2).contiguous()
+    attn_output = attn_output.reshape(*input_shape, -1).contiguous()
+    attn_output_norm = attn_output.norm(dim=-1, keepdim=True)
+    attn_output = (attn_original_norm / attn_output_norm) * attn_output
 
     return attn_output, attn_weights
 
@@ -124,6 +150,8 @@ class LlamaAttention(nn.Module):
         hidden_shape = (*input_shape, -1, self.head_dim)
         
         # check if self has scale
+        scale = None
+        enhance_scale = None
         if hasattr(self, "scale"):
             scale = self.scale
             # check if self.layer_idx in scale["heads"].keys()
@@ -135,8 +163,15 @@ class LlamaAttention(nn.Module):
                 }
             else:
                 scale = None
-        else:
-            scale = None
+        if hasattr(self, "enhance_scale"):
+            enhance_scale = self.enhance_scale
+            if self.layer_idx in enhance_scale["heads"].keys():
+                enhance_scale = {
+                    "heads": enhance_scale["heads"][self.layer_idx],
+                    "values": enhance_scale["values"]
+                }
+            else:
+                enhance_scale = None
 
         query_states = self.q_proj(hidden_states).view(hidden_shape).transpose(1, 2)
         key_states = self.k_proj(hidden_states).view(hidden_shape).transpose(1, 2)
@@ -158,16 +193,67 @@ class LlamaAttention(nn.Module):
             key_states,
             value_states,
             attention_mask,
-            dropout=0.0 if not self.training else self.attention_dropout,
             scaling=self.scaling,
+            dropout=0.0 if not self.training else self.attention_dropout,
             scale=scale,
+            enhance_scale=enhance_scale,
+            input_shape=input_shape,
             **kwargs,
         )
-
-        attn_output = attn_output.reshape(*input_shape, -1).contiguous()
         attn_output = self.o_proj(attn_output)
         return attn_output, attn_weights
  
+class LlamaDecoderLayer(GradientCheckpointingLayer):
+    def __init__(self, config: LlamaConfig, layer_idx: int):
+        super().__init__()
+        self.hidden_size = config.hidden_size
+
+        self.self_attn = LlamaAttention(config=config, layer_idx=layer_idx)
+
+        self.mlp = LlamaMLP(config)
+        self.input_layernorm = LlamaRMSNorm(config.hidden_size, eps=config.rms_norm_eps)
+        self.post_attention_layernorm = LlamaRMSNorm(config.hidden_size, eps=config.rms_norm_eps)
+
+    def forward(
+        self,
+        hidden_states: torch.Tensor,
+        attention_mask: Optional[torch.Tensor] = None,
+        position_ids: Optional[torch.LongTensor] = None,
+        past_key_value: Optional[Cache] = None,
+        use_cache: Optional[bool] = False,
+        cache_position: Optional[torch.LongTensor] = None,
+        position_embeddings: Optional[tuple[torch.Tensor, torch.Tensor]] = None,  # necessary, but kept here for BC
+        **kwargs: Unpack[TransformersKwargs],
+    ) -> tuple[torch.Tensor]:
+        residual = hidden_states
+        hidden_states = self.input_layernorm(hidden_states)
+        
+        # Self Attention
+        hidden_states, _ = self.self_attn(
+            hidden_states=hidden_states,
+            attention_mask=attention_mask,
+            position_ids=position_ids,
+            past_key_value=past_key_value,
+            use_cache=use_cache,
+            cache_position=cache_position,
+            position_embeddings=position_embeddings,
+            **kwargs,
+        )
+        hidden_states = residual + hidden_states
+
+        # Fully Connected
+        residual = hidden_states
+        hidden_states = self.post_attention_layernorm(hidden_states)
+        hidden_states = self.mlp(hidden_states)
+        hidden_states = residual + hidden_states
+
+        if hasattr(self, "refusal_direction"):
+            scale = self.scale / self.refusal_direction.norm() * hidden_states.norm()
+            hidden_states = hidden_states + self.refusal_direction * scale
+
+        return hidden_states
+
+
 def enable_monkey_patched_llama(model):
     # recursively patch the model to the attention layer
     def recursive_patch(model):
@@ -183,6 +269,20 @@ def enable_monkey_patched_llama(model):
 
     recursive_patch(model)
 
+def enable_monkey_patched_llama_decoder(model):
+    """Monkey patch the LlamaDecoderLayer forward method"""
+    def recursive_patch(model):
+        for name, module in reversed(model._modules.items()):
+            if len(list(module.children())) > 0:
+                recursive_patch(module)
+            # Check if this is a decoder layer by looking for common patterns
+            if hasattr(module, 'self_attn') and hasattr(module, 'mlp') and hasattr(module, 'input_layernorm'):
+                model._modules[name].forward = types.MethodType(
+                    LlamaDecoderLayer.forward, model._modules[name]
+                )
+    
+    recursive_patch(model)
+
 def add_property(model, module_name, property_name, property_value):
     # recursively patch the model
     def recursive_patch(model):
@@ -194,4 +294,17 @@ def add_property(model, module_name, property_name, property_value):
             if module_name in name:
                 setattr(model._modules[name], property_name, property_value)
 
+    recursive_patch(model)
+
+def clean_property(model, module_name, property_name):
+    # recursively patch the model
+    def recursive_patch(model):
+        for name, module in reversed(model._modules.items()):
+            if len(list(module.children())) > 0:
+                recursive_patch(
+                    module,
+                )
+            if module_name in name:
+                delattr(model._modules[name], property_name)
+    
     recursive_patch(model)

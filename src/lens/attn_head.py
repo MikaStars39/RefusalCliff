@@ -5,87 +5,8 @@ import os
 
 from tqdm import tqdm
 from transformers import AutoTokenizer, AutoModelForCausalLM
-from src.lens.utils import batch_gen, add_scale
-
-@torch.no_grad()
-def batch_probe(
-    tokenizer: AutoTokenizer,
-    model: AutoModelForCausalLM,
-    prober: torch.nn.Module,
-    messages: list[dict],
-    thinking: list = None,
-    batch_size: int = 1,
-    position_idx: int = 0,
-    layer_idx: int = 0,
-):  
-    total_prober_output = 0.0
-    for idx in range(0, len(messages), batch_size):
-    
-        batch_messages = messages[idx:idx + batch_size]
-        batch_text = []
-        for i, message_list in enumerate(batch_messages):
-            text = tokenizer.apply_chat_template(
-                message_list,
-                add_generation_prompt=True,
-                tokenize=False,
-            ) + (thinking[idx + i] + "\n</think>\n\n" if thinking is not None else "")
-            batch_text.append(text)
-        
-        inputs = tokenizer(
-            batch_text,
-            padding=True,
-            truncation=True,
-            return_tensors="pt",
-        ).to(model.device)
-
-        outputs = model(**inputs,output_hidden_states=True)
-        hidden_states = outputs.hidden_states[layer_idx]
-        prober_output = torch.sigmoid(prober(
-            hidden_states[:,position_idx,:].squeeze(0).to(torch.float32)
-        )).sum().item()  # Shape: [seq_len, 1] or [seq_len]
-        total_prober_output += prober_output
-    
-    del inputs, outputs, batch_text, batch_messages, hidden_states, prober_output
-    
-    return total_prober_output / len(messages)
-
-
-@torch.no_grad()
-def batch_get_hidden_states(
-    tokenizer: AutoTokenizer,
-    model: AutoModelForCausalLM,
-    messages: list[dict],
-    thinking: list = None,
-    batch_size: int = 1,
-):  
-    all_hidden_states = []
-    for idx in range(0, len(messages), batch_size):
-    
-        batch_messages = messages[idx:idx + batch_size]
-        batch_text = []
-        for i, message_list in enumerate(batch_messages):
-            text = tokenizer.apply_chat_template(
-                message_list,
-                add_generation_prompt=True,
-                tokenize=False,
-            ) + (thinking[idx + i] + "\n</think>\n\n" if thinking is not None else "")
-            batch_text.append(text)
-        
-        inputs = tokenizer(
-            batch_text,
-            padding=True,
-            truncation=True,
-            return_tensors="pt",
-        ).to(model.device)
-
-        outputs = model(**inputs,output_hidden_states=True)
-        hidden_states = outputs.hidden_states
-        all_hidden_states.append(hidden_states)
-    
-    del inputs, outputs, batch_text, batch_messages, hidden_states
-    
-    return all_hidden_states
-
+from src.lens.utils import batch_gen, add_scale, batch_probe
+from src.model.modeling_llama import clean_property
 
 @torch.no_grad()
 def ablating_attn_head(
@@ -96,7 +17,11 @@ def ablating_attn_head(
     position_idx: int = 0,
     batch_size: int = 32,
     truncate_num: int = 128,
-    top_n: int = 10,
+    top_n_ablation: int = 10,
+    top_n_enhancement: int = 10,
+    ablation_value: float = 0.1,
+    enhancement_value: float = 100.0,
+    thinking_portion: float = 0.0,
     head_ablation_path: str = "outputs/tracing/llama_head_prober_outputs.json",
     head_enhancement_path: str = "outputs/tracing/llama_head_prober_outputs_toxic.json",
     item_type: str = "original_item",
@@ -110,11 +35,11 @@ def ablating_attn_head(
         data = json.load(f)[:truncate_num]
 
     with open(head_ablation_path, "r") as f:
-        head_ablation_data = json.load(f)
+        head_ablation_data = json.load(f)[:top_n_ablation]
     
     if head_enhancement_path is not None:
         with open(head_enhancement_path, "r") as f:
-            head_enhancement_data = json.load(f)
+            head_enhancement_data = json.load(f)[-top_n_enhancement:]
 
     batch_messages = []
     thinking = []
@@ -122,6 +47,10 @@ def ablating_attn_head(
     for item in data:
         batch_messages.append([{"role": "user", "content": item["original_item"]["prompt"]}])
         thinking.append(item[item_type]["thinking"])
+        if thinking_portion < 0.0:
+            thinking = ""
+        elif thinking_portion > 0.0:
+            thinking = thinking[:int(len(thinking) * thinking_portion)]
 
     from src.lens.prober import LinearProber
     # load checkpoint
@@ -133,7 +62,7 @@ def ablating_attn_head(
     prober = LinearProber(in_dim, hidden_dim).to(model.device)
     prober.load_state_dict(ckpt["state_dict"])
     prober.eval()
-
+    
     prober_output = batch_probe(
         tokenizer=tokenizer,
         model=model,
@@ -147,7 +76,7 @@ def ablating_attn_head(
 
     print(f"original prober output: {prober_output}")
 
-    add_scale(model, head_ablation_data, 0.01, head_enhancement_data, 100.0)
+    add_scale(model, head_ablation_data, ablation_value, head_enhancement_data, enhancement_value)
 
     prober_output = batch_probe(
         tokenizer=tokenizer,
@@ -173,6 +102,7 @@ def trace_attn_head(
     temperature: float = 0.7,
     do_sample: bool = True,
     truncate_num: int = 128,
+    thinking_portion: float = 0.0,
     save_path: str = "outputs/tracing/llama_outputs.json",
     item_type: str = "original_item",
     state_save_path: str = None,
@@ -182,8 +112,6 @@ def trace_attn_head(
     model = AutoModelForCausalLM.from_pretrained(
         model_name, device_map="auto", torch_dtype=torch.bfloat16, attn_implementation="flash_attention_2"
     )
-
-    enable_monkey_patched_llama(model)
 
     with open(json_path, "r") as f:
         data = json.load(f)[:truncate_num]
@@ -207,26 +135,39 @@ def trace_attn_head(
     for item in data:
         batch_messages.append([{"role": "user", "content": item["original_item"]["prompt"]}])
         thinking.append(item[item_type]["thinking"])
-
-    # Save hidden states if state_save_path is provided
-    if state_save_path is not None:
-        print(f"Saving hidden states to {state_save_path}")
-        all_hidden_states = batch_get_hidden_states(
-            tokenizer=tokenizer,
-            model=model,
-            messages=batch_messages,
-            thinking=thinking,
-            batch_size=batch_size,
-        )
-        # Create directory if it doesn't exist
-        os.makedirs(os.path.dirname(state_save_path), exist_ok=True)
-        torch.save(all_hidden_states, state_save_path)
-        print(f"Hidden states saved to {state_save_path}")
+        if thinking_portion < 0.0:
+            thinking[-1] = ""
+        elif thinking_portion > 0.0:
+            thinking[-1] = thinking[-1][:int(len(thinking[-1]) * thinking_portion)]
+    
+    original_prober_output = batch_probe(
+        tokenizer=tokenizer,
+        model=model,
+        prober=prober,
+        messages=batch_messages,
+        thinking=thinking,
+        batch_size=batch_size,
+        position_idx=position_idx,
+        layer_idx=layer_idx,
+    )
 
     for per_layer_idx in tqdm(range(model.config.num_hidden_layers)):
         for per_head_idx in range(model.config.num_attention_heads):
-            add_property(model, "self_attn", "scale", {"heads": {per_layer_idx: [per_head_idx]}, "values": 0.1})
+            
+            # add scale to the head (ablation only)
+            head_ablation_data = [
+                {
+                    "layer_idx": per_layer_idx,
+                    "head_idx": per_head_idx,
+                }
+            ]
+            head_enhancement_data = None
+            
             if prober_ckpt_path is not None:
+
+                # probe the head if prober is provided
+                add_scale(model, head_ablation_data, 0.001, head_enhancement_data, 10.0)
+
                 prober_output = batch_probe(
                     tokenizer=tokenizer,
                     model=model,
@@ -240,9 +181,13 @@ def trace_attn_head(
                 all_outputs.append({
                     "layer_idx": per_layer_idx,
                     "head_idx": per_head_idx,
-                    "prober_output": prober_output,
+                    "prober_output": original_prober_output - prober_output,
                 })
+                
+                clean_property(model, "self_attn", "scale")
             else:
+                add_scale(model, head_ablation_data, 0.01, head_enhancement_data, 100.0)
+                # else, generate the response
                 outputs = batch_gen(
                     tokenizer=tokenizer, 
                     model=model, 
@@ -261,6 +206,7 @@ def trace_attn_head(
                             "response": item,
                         }
                     )
+                clean_property(model, "self_attn", "scale")
 
     # Sort by prober_output in descending order (highest scores first)
     if prober_ckpt_path is not None:

@@ -178,6 +178,8 @@ def test_prober(
                 len_thinking = len(thinking)
                 thinking = thinking[:int(len_thinking * thinking_portion)]
                 thinking = tokenizer.decode(thinking)
+            if thinking_portion < 0.0:
+                thinking = ""
 
             close_marker = "\n</think>\n\n"
 
@@ -189,7 +191,7 @@ def test_prober(
                 tokenize=False,
                 add_generation_prompt=True
             )
-            full_input = chat_template + "\n\n" + thinking + close_marker if thinking_portion >= 0.0 else chat_template
+            full_input = chat_template + "\n\n" + thinking + close_marker
             inputs = tokenizer(full_input, return_tensors="pt").to(model.device)
 
             outputs = model(**inputs, output_hidden_states=True)
