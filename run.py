@@ -15,10 +15,10 @@ from src.lens.attn_head import (
 from src.lens.gen import (
     ablating_head_generation,
     refusal_direction_generation,
-    thinking_attention_generation,
 )
 from src.lens.refusal import (
     get_refusal_vector,
+    find_refusal_head,
 )
 
 import fire
@@ -40,9 +40,9 @@ if __name__ == "__main__":
             "trace_attn_head": trace_attn_head,
             "ablating_attn_head": ablating_attn_head,
             "ablating_head_generation": ablating_head_generation,
-            "thinking_attention_generation": thinking_attention_generation,
             # refusal vector
             "get_refusal_vector": get_refusal_vector,
             "refusal_direction_generation": refusal_direction_generation,
+            "find_refusal_head": find_refusal_head,
         }
     )

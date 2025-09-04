@@ -6,7 +6,8 @@ import os
 from tqdm import tqdm
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from src.lens.utils import batch_gen, add_scale, batch_probe
-from src.model.modeling_llama import clean_property
+from src.inference.refusal import refusal_words
+from src.model.modeling_llama import clean_property, add_property
 
 @torch.no_grad()
 def ablating_attn_head(
@@ -214,6 +215,7 @@ def trace_attn_head(
     
     with open(save_path, "w") as f:
         json.dump(all_outputs, f, indent=4)
+
 
 if __name__ == "__main__":
     from fire import Fire

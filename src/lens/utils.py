@@ -90,7 +90,7 @@ def batch_probe(
                 message_list,
                 add_generation_prompt=True,
                 tokenize=False,
-            ) + (thinking[idx + i] + "\n</think>\n\n" if thinking is not None else "\n</think>\n\n")
+            ) + (thinking[idx + i] + "\n</think>\n\n" if thinking is not None else "")
             batch_text.append(text)
         
         inputs = tokenizer(
@@ -214,6 +214,13 @@ def batch_gen(
             skip_special_tokens=True
         )
         all_outputs.extend(batch_response)
+    
+    # remove all the text before </think>
+    for idx, item in enumerate(all_outputs):
+        if "</think>" in item:
+            all_outputs[idx] = item.split("</think>")[1]
+        else:
+            all_outputs[idx] = item
     
     del inputs, outputs, batch_text, batch_messages
     

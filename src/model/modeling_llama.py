@@ -116,41 +116,42 @@ def eager_attention_forward(
 
     attn_weights = torch.matmul(query, key_states.transpose(2, 3)) * scaling
 
-    if scale is not None:
-        head_idx = torch.tensor(scale["heads"]).to(query.device)
+    # if scale is not None:
+    #     head_idx = torch.tensor(scale["heads"]).to(query.device)
+    #     attn_weights[:, head_idx, :, :] = attn_weights[:, head_idx, :, :] * 1e-3
         
-        # Check if we have thinking positions stored in the module
-        thinking_positions = getattr(module, 'thinking_positions', None)
+        # # Check if we have thinking positions stored in the module
+        # thinking_positions = getattr(module, 'thinking_positions', None)
         
-        if thinking_positions is not None:
-            # Use actual thinking token positions from the stored data
-            batch_size = attn_weights.shape[0]
+        # if thinking_positions is not None:
+        #     # Use actual thinking token positions from the stored data
+        #     batch_size = attn_weights.shape[0]
             
-            # Check if this is prefill phase (square attention matrix)
-            query_len = attn_weights.shape[-2]
-            key_len = attn_weights.shape[-1]
+        #     # Check if this is prefill phase (square attention matrix)
+        #     query_len = attn_weights.shape[-2]
+        #     key_len = attn_weights.shape[-1]
             
-            if query_len == key_len:
-                # This is prefill phase, save the sequence length for later use
-                setattr(module, 'prefill_seq_len', key_len)
-                prefill_seq_len = key_len
-            else:
-                # This is generation phase, check if we have saved prefill length
-                prefill_seq_len = getattr(module, 'prefill_seq_len', None)
+        #     if query_len == key_len:
+        #         # This is prefill phase, save the sequence length for later use
+        #         setattr(module, 'prefill_seq_len', key_len)
+        #         prefill_seq_len = key_len
+        #     else:
+        #         # This is generation phase, check if we have saved prefill length
+        #         prefill_seq_len = getattr(module, 'prefill_seq_len', None)
             
-            for batch_idx in range(batch_size):
-                if batch_idx < len(thinking_positions) and thinking_positions[batch_idx] is not None:
-                    start_pos, end_pos = thinking_positions[batch_idx]
+        #     for batch_idx in range(batch_size):
+        #         if batch_idx < len(thinking_positions) and thinking_positions[batch_idx] is not None:
+        #             start_pos, end_pos = thinking_positions[batch_idx]
 
-                    start_pos = prefill_seq_len - start_pos
-                    end_pos = prefill_seq_len - end_pos
+        #             start_pos = prefill_seq_len - start_pos
+        #             end_pos = prefill_seq_len - end_pos
                     
-                    thinking_indices = torch.arange(start_pos, end_pos, device=query.device)
-                    # Apply steering only to this batch item
-                    batch_attn_weights = attn_weights[batch_idx:batch_idx+1]
-                    for head in head_idx:
-                        batch_attn_weights[:, head, :, thinking_indices] += -1e3
-                    attn_weights[batch_idx:batch_idx+1] = batch_attn_weights
+        #             thinking_indices = torch.arange(start_pos, end_pos, device=query.device)
+        #             # Apply steering only to this batch item
+        #             batch_attn_weights = attn_weights[batch_idx:batch_idx+1]
+        #             for head in head_idx:
+        #                 batch_attn_weights[:, head, :, thinking_indices] += -1e3
+        #             attn_weights[batch_idx:batch_idx+1] = batch_attn_weights
 
     if attention_mask is not None:
         # Handle different attention mask shapes
@@ -173,8 +174,12 @@ def eager_attention_forward(
     attn_weights = nn.functional.dropout(attn_weights, p=dropout, training=module.training)
 
     attn_output = torch.matmul(attn_weights, value_states)
-    attn_output = attn_output.transpose(1, 2).contiguous()
-    attn_output = attn_output.reshape(*input_shape, -1).contiguous()
+    attn_output_o = attn_output.transpose(1, 2).contiguous()
+    attn_output_o = attn_output_o.reshape(*input_shape, -1).contiguous()
+    if scale is not None:
+        attn_output[:, scale["heads"], :, :] = attn_output[:, scale["heads"], :, :] * 1e-3
+    attn_output = attn_output / attn_output.norm() * attn_output_o.norm()
+    del attn_output_o
 
     return attn_output, attn_weights
 
@@ -257,6 +262,26 @@ class LlamaAttention(nn.Module):
             input_shape=input_shape,
             **kwargs,
         )
+        attn_output = attn_output.transpose(1, 2).contiguous()
+
+        if hasattr(self, "refusal_head"):
+            all_outputs = []
+            for head_idx in range(attn_output.shape[2]):
+                zero_tensor = torch.zeros_like(attn_output)
+                zero_tensor[:, :, head_idx, :] = attn_output[:, :, head_idx, :]
+                zero_tensor = self.o_proj(zero_tensor.reshape(*input_shape, -1).contiguous()[:, -1, :]).mean(dim=0)
+                refusal_vector = self.refusal_head["refusal_vector"]
+                # rescale zero vector and refusal_vector to the same norm
+                score = torch.dot(zero_tensor.cpu(), refusal_vector) / (refusal_vector.norm())
+                all_outputs.append(score.item())
+                
+            if len(self.refusal_head["all_outputs"]) == 0:
+                self.refusal_head["all_outputs"] = all_outputs
+            else:
+                for idx, output in enumerate(all_outputs):
+                    self.refusal_head["all_outputs"][idx] += output
+
+        attn_output = attn_output.reshape(*input_shape, -1).contiguous()
         attn_output = self.o_proj(attn_output)
         return attn_output, attn_weights
  

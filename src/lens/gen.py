@@ -49,6 +49,8 @@ def ablating_head_generation(
         thinking.append(item[item_type]["thinking"])
         if thinking_portion < 0.0:
             thinking[-1] = " "
+        elif thinking_portion == 0.0:
+            thinking[-1] = None
         elif thinking_portion > 0.0:
             thinking[-1] = thinking[-1][:int(len(thinking[-1]) * thinking_portion)]
 
@@ -109,8 +111,8 @@ def refusal_direction_generation(
 
     refusal_direction = torch.load(refusal_direction_path)
 
-    add_property(model, f"layers.{str(layer_idx)}", "refusal_direction", refusal_direction[layer_idx])
-    add_property(model, f"layers.{str(layer_idx)}", "scale", scale)
+    add_property(model, f"self_attn", "refusal_direction", refusal_direction[layer_idx])
+    add_property(model, f"self_attn", "scale", scale)
     batch_messages = []
     thinking = []
 
