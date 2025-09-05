@@ -4,38 +4,41 @@ import os
 from tqdm import tqdm
 from transformers import AutoModelForCausalLM, AutoTokenizer
 import json
-import random
 
 from torch.utils.data import TensorDataset, DataLoader
-from fire import Fire
+from src.inference.refusal import refusal_words
 
 def collect_refusal(
     json_path: str,
     save_path: str,
+    top_n: int = 32,
 ):
     with open(json_path, "r") as f:
         jbbench_distill_llama_8b = json.load(f)
 
     refusal_list = []
     for item in jbbench_distill_llama_8b:
-        if "I'm sorry" in item["original_item"]["response"]:
-            refusal_list.append(item)
+        if any(refusal_word in item["original_item"]["response"][:top_n] for refusal_word in refusal_words):
+            if len(item["original_item"]["thinking"]) > 10:
+                refusal_list.append(item)
           
     with open(save_path, "w") as f:
-        json.dump(refusal_list, f, indent=4)
+        json.dump(refusal_list, f, indent=4)    
 
 
 def collect_non_refusal(
     json_path: str,
     save_path: str,
+    top_n: int = 32,
 ):
     with open(json_path, "r") as f:
         jbbench_distill_llama_8b = json.load(f)
 
     refusal_list = []
     for item in jbbench_distill_llama_8b:
-        if "I'm sorry" not in item["original_item"]["response"]:
-            refusal_list.append(item)
+        if any(refusal_word not in item["original_item"]["response"][:top_n] for refusal_word in refusal_words):
+            if len(item["original_item"]["thinking"]) > 10:
+                refusal_list.append(item)
         
     with open(save_path, "w") as f:
         json.dump(refusal_list, f, indent=4)
@@ -47,13 +50,14 @@ def extract_hidden_states(
     save_path: str,
     max_items: int = 200,
     layer_index: int = None,
+    model_path: str = "Qwen/Qwen3-4B-Thinking-2507",  # Added model_path parameter with updated default
 ):
     model = AutoModelForCausalLM.from_pretrained(
-        "deepseek-ai/DeepSeek-R1-Distill-Llama-8B",
+        model_path,  # Use the parameter instead of hardcoded path
         device_map="auto",
         torch_dtype=torch.bfloat16,
     )
-    tokenizer = AutoTokenizer.from_pretrained("deepseek-ai/DeepSeek-R1-Distill-Llama-8B")
+    tokenizer = AutoTokenizer.from_pretrained(model_path)  # Use the parameter
 
     with open(json_path, "r") as f:
         jbbench_distill_llama_8b = json.load(f)
@@ -113,6 +117,7 @@ def extract_hidden_states(
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
     with open(save_path, "wb") as f:
         torch.save(tensor_list, f)
+
 
 @torch.no_grad()
 def test_prober(
@@ -309,11 +314,12 @@ def test_prober(
     plt.close()
 
 
+
 @torch.no_grad()
 def test_prober_by_layers(
     json_path: str,
     ckpt_path: str = "/diancpfs/user/qingyu/persona/outputs/tensor/linear_prober.pt",
-    model_path: str = "deepseek-ai/DeepSeek-R1-Distill-Llama-8B",
+    model_path: str = "Qwen/Qwen3-4B-Thinking-2507",  # Updated default model
     max_items: int = None,
     thinking_portion: float = 0.0,
     item_type: str = "original_item",
@@ -347,23 +353,41 @@ def test_prober_by_layers(
         print(f"Using cached results with shape: {layer_results.shape}")
         return f"Completed using cached results. Shape: {layer_results.shape}"
 
-    # Load checkpoint
-    ckpt = torch.load(ckpt_path, map_location=device)
-    in_dim = ckpt["in_dim"]
-    hidden_dim = 1024  # use the same as training
-
-    # Rebuild model and load weights
-    prober = LinearProber(in_dim, hidden_dim).to(device)
-    prober.load_state_dict(ckpt["state_dict"])
-    prober.eval()
-
-    # Load model and tokenizer
+    # Load model and tokenizer first to get actual dimensions
     model = AutoModelForCausalLM.from_pretrained(
         model_path,
         device_map="auto",
         torch_dtype=torch.bfloat16,
     )
     tokenizer = AutoTokenizer.from_pretrained(model_path)
+    
+    # Get actual model hidden dimension
+    actual_hidden_dim = model.config.hidden_size
+    print(f"Model hidden dimension: {actual_hidden_dim}")
+
+    # Load checkpoint
+    ckpt = torch.load(ckpt_path, map_location=device)
+    stored_in_dim = ckpt["in_dim"]
+    hidden_dim = 1024  # use the same as training
+    
+    print(f"Stored prober input dimension: {stored_in_dim}")
+    print(f"Actual model hidden dimension: {actual_hidden_dim}")
+
+    # Check if dimensions match, if not, we need to handle this
+    if stored_in_dim != actual_hidden_dim:
+        print(f"WARNING: Dimension mismatch! Prober was trained with {stored_in_dim}D features, but model outputs {actual_hidden_dim}D features.")
+        print(f"You may need to retrain the prober with the correct model, or use a different checkpoint.")
+        
+        # For now, we'll create a new prober with the correct dimensions and warn the user
+        print("Creating a new prober with correct dimensions, but it won't have trained weights!")
+        prober = LinearProber(actual_hidden_dim, hidden_dim).to(device)
+        prober.eval()
+        # Note: This prober will have random weights since we can't load the mismatched checkpoint
+    else:
+        # Rebuild model and load weights normally
+        prober = LinearProber(stored_in_dim, hidden_dim).to(device)
+        prober.load_state_dict(ckpt["state_dict"])
+        prober.eval()
     
     with open(json_path, "r") as f:
         data = json.load(f)
@@ -636,16 +660,35 @@ def train_linear_prober(
     if or_feats.shape[1] != jbb_feats.shape[1]:
         raise ValueError(f"Feature dimension mismatch: OR={or_feats.shape[1]} vs JBB={jbb_feats.shape[1]}")
 
-    x = torch.cat([or_feats, jbb_feats], dim=0)
+    print(f"Original dataset sizes: OR={or_feats.shape[0]}, JBB={jbb_feats.shape[0]}")
+    
+    # Balance the dataset to have equal number of samples
+    min_samples = min(or_feats.shape[0], jbb_feats.shape[0])
+    print(f"Balancing dataset to {min_samples} samples per class")
+    
+    # Randomly sample min_samples from each class
+    torch.manual_seed(seed)  # Ensure reproducible sampling
+    or_indices = torch.randperm(or_feats.shape[0])[:min_samples]
+    jbb_indices = torch.randperm(jbb_feats.shape[0])[:min_samples]
+    
+    or_feats_balanced = or_feats[or_indices]
+    jbb_feats_balanced = jbb_feats[jbb_indices]
+    
+    print(f"Balanced dataset sizes: OR={or_feats_balanced.shape[0]}, JBB={jbb_feats_balanced.shape[0]}")
+
+    x = torch.cat([or_feats_balanced, jbb_feats_balanced], dim=0)
     y = torch.cat([
-        torch.zeros(or_feats.shape[0], dtype=torch.float32),
-        torch.ones(jbb_feats.shape[0], dtype=torch.float32),
+        torch.zeros(or_feats_balanced.shape[0], dtype=torch.float32),
+        torch.ones(jbb_feats_balanced.shape[0], dtype=torch.float32),
     ], dim=0)
 
     # shuffle
     perm = torch.randperm(x.shape[0])
     x = x[perm]
     y = y[perm]
+
+    print(f"Final dataset size: {x.shape[0]} samples, Feature dimension: {x.shape[1]}")
+    print(f"Class distribution: OR={(y == 0).sum().item()}, JBB={(y == 1).sum().item()}")
 
     # split
     val_size = int(x.shape[0] * val_split)

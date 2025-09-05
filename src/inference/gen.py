@@ -66,6 +66,7 @@ async def process_single_item(
     max_retries=3, 
     generation_mode="gen", # can be gen, harm, eval
     item_type="original_item", 
+    special_system_prompt=None,
     instruction="",
 ):
     """Process a single item with the OpenAI client"""
@@ -88,6 +89,14 @@ async def process_single_item(
             elif generation_mode == "eval":
                 prompt = item[item_type]["response"][:512] # truncate to 512 tokens for llama guard
                 thinking = None
+            
+            if special_system_prompt is not None:
+                system_prompt = special_system_prompt
+            
+            # Debug: show what guided_regex we're using
+            guided_regex_value = None
+            if thinking is not None and thinking.strip():
+                guided_regex_value = f"^{re.escape(thinking)}\\n</think>.*"
                 
             # Use OpenAI client directly
             result = await client.chat.completions.create(
@@ -99,19 +108,25 @@ async def process_single_item(
                         {"role": "user", "content": prompt}
                 ],
                 extra_body={
-                    "guided_regex": f"^{re.escape(thinking)}\\n</think>.*"
-                } if thinking is not None else None,
+                    "guided_regex": guided_regex_value
+                } if guided_regex_value is not None else None,
                 max_tokens=max_tokens,
                 temperature=temperature,
             )
 
             if generation_mode == "gen":
                 response_content = result.choices[0].message.content
-                match = re.search(r"</think>\s*", response_content)
-                if match:
-                    thinking_part = response_content[:match.start()]
-                    response_part = response_content[match.end():]
+                
+                # Use flexible regex pattern to match </think> with any number of newlines
+                think_pattern = re.compile(r'\n*</think>\n*')
+                parts = think_pattern.split(response_content, 1)
+                
+                if len(parts) > 1:
+                    # Successfully split into thinking and response parts
+                    thinking_part = parts[0].rstrip('\n')  # Remove trailing newlines from thinking
+                    response_part = parts[1].lstrip('\n')  # Remove leading newlines from response
                 else:
+                    # No think marker found, treat entire content as response
                     thinking_part = ""
                     response_part = response_content
 
@@ -160,6 +175,7 @@ async def api_inference(
     generation_mode: str = "gen", # can be gen, harm, eval
     item_type: str = "original_item",
     instruction: str = "",
+    special_system_prompt: str = None,
 ):
     """Async version using OpenAI client with parallel processing"""
 
@@ -196,7 +212,8 @@ async def api_inference(
                 max_retries=max_retries, 
                 generation_mode=generation_mode, 
                 item_type=item_type, 
-                instruction=instruction
+                instruction=instruction,
+                special_system_prompt=special_system_prompt
             )
     
     # Create all tasks

@@ -1,5 +1,6 @@
 from src.inference.gen import api_inference
 from src.inference.bench import process_data
+from src.inference.utils import split_thinking_response
 from src.lens.prober import (
     test_prober, 
     collect_refusal, 
@@ -20,6 +21,7 @@ from src.lens.refusal import (
     get_refusal_vector,
     find_refusal_head,
 )
+from src.lens.draw import plot_multiple_prober_results
 
 import fire
 
@@ -44,5 +46,9 @@ if __name__ == "__main__":
             "get_refusal_vector": get_refusal_vector,
             "refusal_direction_generation": refusal_direction_generation,
             "find_refusal_head": find_refusal_head,
+            # utils
+            "split_thinking_response": split_thinking_response,
+            # draw
+            "plot_multiple_prober_results": plot_multiple_prober_results,
         }
     )
