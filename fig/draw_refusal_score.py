@@ -37,10 +37,10 @@ plt.rcParams.update({
 
 def plot_multiple_prober_results(
     pt_paths: str,  # Changed to string for JSON file path
-    title: str = "Prober Results Comparison",
     save_path: Optional[str] = None,
     figsize: tuple = (6, 6),
-    colors: Optional[List[str]] = None
+    colors: Optional[List[str]] = None,
+    linewidth: float = 1.0,
 ) -> None:
     """
     Plot multiple prober result .pt files on a single figure with academic style.
@@ -99,32 +99,60 @@ def plot_multiple_prober_results(
                 # If multiple item types in one file, plot all of them
                 for j, (item_type, result_tensor) in enumerate(results.items()):
                     color_idx = (i * len(results) + j) % len(colors)
-                    ax.plot(x_axis, result_tensor.numpy(), 
-                           label=f"{label}_{item_type}", 
-                           color=colors[color_idx], 
-                           linewidth=2.5,
-                           alpha=0.8)
+                    base_color = colors[color_idx]
+                    
+                    # Plot the first 90% with lighter color
+                    ax.plot(x_axis[:90], result_tensor[:90].numpy(), 
+                           color=base_color, 
+                           linewidth=linewidth,
+                           alpha=0.4)  # Lighter alpha for first 90%
+                    
+                    # Plot the last 10% with normal color
+                    ax.plot(x_axis[89:], result_tensor[89:].numpy(), 
+                           label=f"{label}", 
+                           color=base_color, 
+                           linewidth=linewidth,
+                           alpha=0.8)  # Normal alpha for last 10%
+                           
             elif isinstance(results, torch.Tensor):
                 # Single tensor result
                 if results.dim() == 1 and len(results) == 100:
                     # 1D tensor with 100 points
                     color = colors[i % len(colors)]
-                    ax.plot(x_axis, results.numpy(), 
+                    
+                    # Plot the first 90% with lighter color
+                    ax.plot(x_axis[:90], results[:90].numpy(), 
+                           color=color, 
+                           linewidth=linewidth,
+                           alpha=0.4)  # Lighter alpha for first 90%
+                    
+                    # Plot the last 10% with normal color
+                    ax.plot(x_axis[89:], results[89:].numpy(), 
                            label=label, 
                            color=color, 
-                           linewidth=2.5,
-                           alpha=0.8)
+                           linewidth=linewidth,
+                           alpha=0.8)  # Normal alpha for last 10%
+                           
                 elif results.dim() == 2:
                     # 2D tensor (multiple sequences or layer results)
                     if results.shape[1] == 100:
                         # Each row is a sequence
                         for j, seq in enumerate(results):
                             color_idx = (i + j) % len(colors)
-                            ax.plot(x_axis, seq.numpy(), 
-                                   label=f"{label}_seq{j}", 
-                                   color=colors[color_idx], 
-                                   linewidth=2.5,
-                                   alpha=0.8)
+                            base_color = colors[color_idx]
+                            
+                            # Plot the first 90% with lighter color
+                            ax.plot(x_axis[:90], seq[:90].numpy(), 
+                                   color=base_color, 
+                                   linewidth=linewidth,
+                                   alpha=0.4)  # Lighter alpha for first 90%
+                            
+                            # Plot the last 10% with normal color
+                            ax.plot(x_axis[89:], seq[89:].numpy(), 
+                                   label=f"{label}", 
+                                   color=base_color, 
+                                   linewidth=linewidth,
+                                   alpha=0.8)  # Normal alpha for last 10%
                     else:
                         print(f"Warning: Unexpected tensor shape {results.shape} in {pt_path}")
                 else:
@@ -140,17 +168,49 @@ def plot_multiple_prober_results(
     ax.set_xlabel('Normalized Position', fontsize=16, fontweight='normal', color='#333333')
     ax.set_ylabel('Refusal Score', fontsize=16, fontweight='normal', color='#333333')
     
+    # Add grayer background for the last 10% of x-axis (right 10%)
+    ax.axvspan(90, 105, alpha=0.2, color='#c8c8c8', zorder=0)  # More subtle background
+    
     # Set axis limits and ticks
-    ax.set_xlim(0, 99)
+    ax.set_xlim(0, 105)  # Changed from 110 to 105
     ax.set_ylim(0, 1)
+    
+    # Add large dots for the last point (position 99, index 99) for each plotted line
+    for i, (pt_path, label) in enumerate(zip(pt_file_paths, labels)):
+        if not os.path.exists(pt_path):
+            continue
+            
+        try:
+            # Load the .pt file
+            results = torch.load(pt_path, map_location='cpu')
+            
+            # Handle different result formats to get the last point
+            if isinstance(results, dict):
+                for j, (item_type, result_tensor) in enumerate(results.items()):
+                    color_idx = (i * len(results) + j) % len(colors)
+                    if len(result_tensor) >= 100:
+                        ax.scatter(99, result_tensor[99].item(), 
+                                 color=colors[color_idx], s=30, zorder=5, alpha=0.9)
+            elif isinstance(results, torch.Tensor):
+                if results.dim() == 1 and len(results) >= 100:
+                    color = colors[i % len(colors)]
+                    ax.scatter(99, results[99].item(), 
+                             color=color, s=30, zorder=5, alpha=0.9)
+                elif results.dim() == 2 and results.shape[1] >= 100:
+                    for j, seq in enumerate(results):
+                        color_idx = (i + j) % len(colors)
+                        ax.scatter(99, seq[99].item(), 
+                                 color=colors[color_idx], s=30, zorder=5, alpha=0.9)
+        except Exception as e:
+            continue
     
     # Customize ticks with light colors
     ax.tick_params(axis='both', which='major', labelsize=12, width=0.8, 
                    color='#cccccc', labelcolor='#666666')
-    ax.set_xticks(np.arange(0, 100, 20))
+    ax.set_xticks(np.arange(0, 105, 20))  # This will show 0, 20, 40, 60, 80, 100
     ax.set_yticks(np.arange(0, 1.1, 0.2))
     
-    # Add grid with subtle styling
+    # Add grid with subtle styling (this will include vertical line at 100)
     ax.grid(True, alpha=0.4, linestyle='-', linewidth=0.5, color='#dddddd')
     
     # Configure legend with light styling in top-left corner
@@ -181,3 +241,11 @@ def plot_multiple_prober_results(
         print(f"Plot saved to: {save_path}")
     
     plt.show()
+
+if __name__ == "__main__":
+    plot_multiple_prober_results(
+        pt_paths="outputs/fig/pt_files.json",
+        save_path="outputs/fig/refusal_score.png",
+        linewidth=1.5,
+        figsize=(6, 4),
+    )

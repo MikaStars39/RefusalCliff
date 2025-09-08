@@ -21,7 +21,6 @@ from src.lens.refusal import (
     get_refusal_vector,
     find_refusal_head,
 )
-from src.lens.draw import plot_multiple_prober_results
 
 import fire
 
@@ -48,7 +47,5 @@ if __name__ == "__main__":
             "find_refusal_head": find_refusal_head,
             # utils
             "split_thinking_response": split_thinking_response,
-            # draw
-            "plot_multiple_prober_results": plot_multiple_prober_results,
         }
     )
