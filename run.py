@@ -11,7 +11,8 @@ from src.lens.prober import (
 )
 from src.lens.attn_head import (
     trace_attn_head, 
-    ablating_attn_head
+    ablating_attn_head,
+    analyze_attn_patterns,
 )
 from src.lens.gen import (
     ablating_head_generation,
@@ -41,6 +42,7 @@ if __name__ == "__main__":
             "trace_attn_head": trace_attn_head,
             "ablating_attn_head": ablating_attn_head,
             "ablating_head_generation": ablating_head_generation,
+            "analyze_attn_patterns": analyze_attn_patterns,
             # refusal vector
             "get_refusal_vector": get_refusal_vector,
             "refusal_direction_generation": refusal_direction_generation,

@@ -236,8 +236,12 @@ def plot_multiple_prober_results(
     
     # Save plot if path provided
     if save_path:
+        # Ensure PDF extension
+        if save_path and not save_path.lower().endswith('.pdf'):
+            save_path = save_path.rsplit('.', 1)[0] + '.pdf'
+        
         plt.savefig(save_path, dpi=300, bbox_inches='tight', 
-                   facecolor='white', edgecolor='none')
+                   facecolor='white', edgecolor='none', format='pdf')
         print(f"Plot saved to: {save_path}")
     
     plt.show()
@@ -245,7 +249,7 @@ def plot_multiple_prober_results(
 if __name__ == "__main__":
     plot_multiple_prober_results(
         pt_paths="outputs/fig/pt_files.json",
-        save_path="outputs/fig/refusal_score.png",
+        save_path="outputs/fig/refusal_score.pdf",
         linewidth=1.5,
         figsize=(6, 4),
     )

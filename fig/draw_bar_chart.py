@@ -144,8 +144,12 @@ def plot_bar_chart(
     
     # Save plot if path provided
     if save_path:
+        # Ensure PDF extension
+        if save_path and not save_path.lower().endswith('.pdf'):
+            save_path = save_path.rsplit('.', 1)[0] + '.pdf'
+        
         plt.savefig(save_path, dpi=300, bbox_inches='tight', 
-                   facecolor='white', edgecolor='none')
+                   facecolor='white', edgecolor='none', format='pdf')
         print(f"Bar chart saved to: {save_path}")
     
     plt.show()
@@ -250,8 +254,12 @@ def plot_grouped_bar_chart(
     plt.tight_layout()
     
     if save_path:
+        # Ensure PDF extension
+        if save_path and not save_path.lower().endswith('.pdf'):
+            save_path = save_path.rsplit('.', 1)[0] + '.pdf'
+        
         plt.savefig(save_path, dpi=300, bbox_inches='tight',
-                   facecolor='white', edgecolor='none')
+                   facecolor='white', edgecolor='none', format='pdf')
         print(f"Grouped bar chart saved to: {save_path}")
     
     plt.show()
@@ -293,12 +301,12 @@ if __name__ == "__main__":
     # Plot examples
     plot_bar_chart(
         data_path="outputs/fig/bar_data.json",
-        save_path="outputs/fig/simple_bar_chart.png",
+        save_path="outputs/fig/simple_bar_chart.pdf",
         figsize=(8, 6)
     )
     
     plot_grouped_bar_chart(
         data_path="outputs/fig/grouped_bar_data.json",
-        save_path="outputs/fig/grouped_bar_chart.png",
+        save_path="outputs/fig/grouped_bar_chart.pdf",
         figsize=(10, 6)
     ) 
