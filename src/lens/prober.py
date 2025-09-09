@@ -177,12 +177,11 @@ def test_prober(
             
             if thinking_portion >= 0.0:
                 thinking = item[item_type_name]["thinking"]
-
-            if thinking_portion > 0.0:
-                thinking = tokenizer.encode(thinking)
-                len_thinking = len(thinking)
-                thinking = thinking[:int(len_thinking * thinking_portion)]
-                thinking = tokenizer.decode(thinking)
+                if thinking_portion > 0.0:
+                    thinking = tokenizer.encode(thinking)
+                    len_thinking = len(thinking)
+                    thinking = thinking[:int(len_thinking * thinking_portion)]
+                    thinking = tokenizer.decode(thinking)
             if thinking_portion < 0.0:
                 thinking = ""
 
@@ -202,12 +201,12 @@ def test_prober(
             outputs = model(**inputs, output_hidden_states=True)
 
             hidden_states_between_think = outputs.hidden_states
-            if layer_index is None:
-                chosen_layer = model.config.num_hidden_layers * 2 // 3
-            else:
-                chosen_layer = layer_index
+            
+            chosen_layer = layer_index
+
             layer_h = hidden_states_between_think[chosen_layer].to(torch.float32)
             seq_len = layer_h.shape[1]
+
             if seq_len == 0:
                 print(f"skip idx={idx} empty thinking span for {item_type_name}")
                 continue
@@ -310,10 +309,7 @@ def test_prober(
     torch.save(all_results, result_save_path)
     print(f"All normalized results saved to: {result_save_path}")
     print(f"Max length of sequences: {max_seq_len_global}")
-    
     plt.close()
-
-
 
 @torch.no_grad()
 def test_prober_by_layers(

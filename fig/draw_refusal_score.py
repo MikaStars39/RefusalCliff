@@ -243,13 +243,7 @@ def plot_multiple_prober_results(
         plt.savefig(save_path, dpi=300, bbox_inches='tight', 
                    facecolor='white', edgecolor='none', format='pdf')
         print(f"Plot saved to: {save_path}")
-    
-    plt.show()
 
 if __name__ == "__main__":
-    plot_multiple_prober_results(
-        pt_paths="outputs/fig/pt_files.json",
-        save_path="outputs/fig/refusal_score.pdf",
-        linewidth=1.5,
-        figsize=(6, 4),
-    )
+    import fire
+    fire.Fire(plot_multiple_prober_results)
