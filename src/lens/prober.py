@@ -556,11 +556,10 @@ def load_pt(
 class LinearProber(nn.Module):
     def __init__(self, input_dim, hidden_dim=1024):
         super().__init__()
-        self.linear1 = nn.Linear(input_dim, hidden_dim)
-        self.linear2 = nn.Linear(hidden_dim, 1)
+        self.linear = nn.Linear(input_dim, 1)
 
     def forward(self, x):
-        return self.linear2(torch.relu(self.linear1(x)))
+        return self.linear(x)
     
 class ProberTrainer():
     def __init__(
@@ -631,7 +630,7 @@ class ProberTrainer():
             print(f"Epoch {epoch:02d} | train_loss={train_loss:.4f} | val_loss={val_loss:.4f} | val_acc={val_acc:.4f}")
             if val_acc > best_val_acc:
                 best_val_acc = val_acc
-                best_state = {"state_dict": self.prober.state_dict(), "in_dim": self.prober.linear1.in_features}
+                best_state = {"state_dict": self.prober.state_dict(), "in_dim": self.prober.linear.in_features}
                 os.makedirs(os.path.dirname(save_path), exist_ok=True)
                 torch.save(best_state, save_path)
                 print(f"Saved new best model (val_acc={best_val_acc:.4f}) to {save_path}")

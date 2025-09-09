@@ -35,54 +35,46 @@ plt.rcParams.update({
     'text.usetex': False,
 })
 
-def plot_bar_chart(
-    data_path: str,  # Path to JSON file containing data
+def plot_bar_chart_from_dict(
+    data: Dict[str, float],
     save_path: Optional[str] = None,
+    title: str = "Bar Chart",
+    xlabel: str = "Models",
+    ylabel: str = "Values",
     figsize: tuple = (8, 6),
     colors: Optional[List[str]] = None,
-    bar_width: float = 0.6,
+    bar_width: float = 0.3,  # Keep bars thin
     show_values: bool = True,
 ) -> None:
     """
-    Plot bar chart with academic style matching the programmer aesthetic.
+    Plot bar chart directly from a dictionary with academic style.
     
     Args:
-        data_path: Path to JSON file containing bar chart data
+        data: Dictionary with labels as keys and values as values
         save_path: Optional path to save the plot
+        title: Chart title
+        xlabel: X-axis label
+        ylabel: Y-axis label
         figsize: Figure size tuple
         colors: Optional list of colors for bars
         bar_width: Width of bars (0.0 to 1.0)
         show_values: Whether to show values on top of bars
     """
-    # Load configuration from JSON file
-    with open(data_path, "r") as f:
-        config = json.load(f)
-    
-    labels = config["labels"]
-    values = config["values"]
-    title = config.get("title", "Bar Chart")
-    xlabel = config.get("xlabel", "Categories")
-    ylabel = config.get("ylabel", "Values")
+    labels = list(data.keys())
+    values = list(data.values())
     
     if not values or not labels:
         raise ValueError("Both values and labels must be provided")
     
-    if len(values) != len(labels):
-        raise ValueError("Values and labels must have the same length")
-    
-    # Academic color palette - sophisticated and distinguishable colors
+    # Ordered color palette - gradual transition from light to dark blues
     if colors is None:
         colors = [
-            '#8B4513',  # Saddle Brown
-            '#B22222',  # Fire Brick Red
-            '#228B22',  # Forest Green
+            '#87CEEB',  # Sky Blue (lightest)
+            '#6BB6FF',  # Light Blue
+            '#4A90E2',  # Medium Blue
+            '#4682B4',  # Steel Blue
             '#4169E1',  # Royal Blue
-            '#9932CC',  # Dark Orchid
-            '#FF8C00',  # Dark Orange
-            '#DC143C',  # Crimson
-            '#2F4F4F',  # Dark Slate Gray
-            '#8B008B',  # Dark Magenta
-            '#556B2F'   # Dark Olive Green
+            '#1E3A8A',  # Dark Blue (darkest)
         ]
     
     # Create figure with programmer styling
@@ -90,48 +82,60 @@ def plot_bar_chart(
     fig.patch.set_facecolor('white')  # White background for figure
     ax.set_facecolor('#f8f8f8')  # Light gray background for plot area
     
-    # Create bar positions
-    x_pos = np.arange(len(labels))
+    # Add grid first so it appears behind bars
+    ax.grid(True, alpha=0.3, linestyle='-', linewidth=0.5, color='#dddddd', axis='y', zorder=0)
     
-    # Create bars with colors
+    # Create bar positions with reduced spacing
+    x_pos = np.arange(len(labels)) * 0.5 # Reduce spacing between bars
+    
+    # Create color list with gradient and special color for last bar
+    bar_colors = []
+    for i in range(len(values)):
+        if i == len(values) - 1:  # Last bar is dark gray
+            bar_colors.append('#404040')  # Dark gray
+        else:
+            # Use colors from the palette in order
+            bar_colors.append(colors[i % len(colors)])
+    
+    # Create standard rectangular bars
     bars = ax.bar(x_pos, values, 
                   width=bar_width,
-                  color=[colors[i % len(colors)] for i in range(len(values))],
-                  alpha=0.8,
-                  edgecolor='white',
-                  linewidth=1.0)
+                  color=bar_colors,
+                  alpha=0.85,
+                  edgecolor='none',
+                  zorder=3)
     
     # Add value labels on top of bars if requested
     if show_values:
         for i, (bar, value) in enumerate(zip(bars, values)):
             height = bar.get_height()
-            ax.text(bar.get_x() + bar.get_width()/2., height + max(values) * 0.01,
-                   f'{value:.2f}' if isinstance(value, float) else str(value),
+            ax.text(bar.get_x() + bar.get_width()/2., height + 0.02,
+                   f'{value*100:.1f}%',  # Convert to percentage format
                    ha='center', va='bottom',
                    fontsize=10, color='#333333',
-                   fontweight='normal')
+                   fontweight='normal',
+                   zorder=5)
     
-    # Configure plot with programmer styling
-    ax.set_xlabel(xlabel, fontsize=16, fontweight='normal', color='#333333')
-    ax.set_ylabel(ylabel, fontsize=16, fontweight='normal', color='#333333')
-    ax.set_title(title, fontsize=18, fontweight='normal', color='#333333', pad=20)
+    # Configure plot with programmer styling - remove title and x-axis label
+    ax.set_ylabel("Attack Successful Rate", fontsize=16, fontweight='normal', color='#333333')
     
     # Set x-axis labels
     ax.set_xticks(x_pos)
     ax.set_xticklabels(labels, rotation=45 if len(max(labels, key=len)) > 8 else 0, 
                        ha='right' if len(max(labels, key=len)) > 8 else 'center')
     
-    # Set y-axis limits with some padding
-    y_min = min(0, min(values) * 1.1 if min(values) < 0 else 0)
-    y_max = max(values) * 1.1
-    ax.set_ylim(y_min, y_max)
+    # Set y-axis limits to 0-100% (0.0-1.0 in decimal)
+    ax.set_ylim(0, 1.0)
+    
+    # Format y-axis as percentages
+    from matplotlib.ticker import FuncFormatter
+    def percent_formatter(x, pos):
+        return f'{x*100:.0f}%'
+    ax.yaxis.set_major_formatter(FuncFormatter(percent_formatter))
     
     # Customize ticks with light colors
     ax.tick_params(axis='both', which='major', labelsize=12, width=0.8, 
                    color='#cccccc', labelcolor='#666666')
-    
-    # Add grid with subtle styling
-    ax.grid(True, alpha=0.4, linestyle='-', linewidth=0.5, color='#dddddd', axis='y')
     
     # Set light colored spines
     ax.spines['left'].set_color('#cccccc')
@@ -265,48 +269,24 @@ def plot_grouped_bar_chart(
     plt.show()
 
 if __name__ == "__main__":
-    # Example usage - create sample data files and plots
-    
-    # Sample simple bar chart data
-    simple_data = {
-        "labels": ["Method A", "Method B", "Method C", "Method D", "Method E"],
-        "values": [0.85, 0.92, 0.78, 0.89, 0.94],
-        "title": "Model Performance Comparison",
-        "xlabel": "Methods",
-        "ylabel": "Accuracy"
+    # Data to plot
+    data = {
+        "R1-LLaMA-8B": 0.672,
+        "R1-Qwen-7B": 0.525,
+        "Hermes-14B": 0.500,
+        "Skywork-OR1-8B": 0.425,
+        "R1-Qwen-14B": 0.225,
+        "QwQ-32B": 0.01,
+        "Qwen3-Thinking-4B": 0.025,
+        "LLaMA-8B-it": 0.02,
     }
     
-    # Sample grouped bar chart data
-    grouped_data = {
-        "categories": ["Dataset 1", "Dataset 2", "Dataset 3", "Dataset 4"],
-        "groups": {
-            "Model A": [0.85, 0.78, 0.92, 0.88],
-            "Model B": [0.89, 0.82, 0.94, 0.91],
-            "Model C": [0.82, 0.85, 0.89, 0.86]
-        },
-        "title": "Multi-Model Performance Comparison",
-        "xlabel": "Datasets",
-        "ylabel": "Performance Score"
-    }
-    
-    # Create sample data files
+    # Create output directory
     os.makedirs("outputs/fig", exist_ok=True)
     
-    with open("outputs/fig/bar_data.json", "w") as f:
-        json.dump(simple_data, f, indent=2)
-    
-    with open("outputs/fig/grouped_bar_data.json", "w") as f:
-        json.dump(grouped_data, f, indent=2)
-    
-    # Plot examples
-    plot_bar_chart(
-        data_path="outputs/fig/bar_data.json",
-        save_path="outputs/fig/simple_bar_chart.pdf",
+    # Plot the bar chart using the data dictionary
+    plot_bar_chart_from_dict(
+        data=data,
+        save_path="outputs/fig/model_comparison.pdf",
         figsize=(8, 6)
-    )
-    
-    plot_grouped_bar_chart(
-        data_path="outputs/fig/grouped_bar_data.json",
-        save_path="outputs/fig/grouped_bar_chart.pdf",
-        figsize=(10, 6)
     ) 
