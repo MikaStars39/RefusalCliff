@@ -26,14 +26,14 @@ import types
 from transformers.cache_utils import Cache
 from transformers.processing_utils import Unpack
 from transformers.utils import TransformersKwargs, logging
-from transformers.models.llama.configuration_llama import LlamaConfig
+from transformers.models.qwen2.configuration_qwen2 import Qwen2Config
 from transformers.modeling_layers import GradientCheckpointingLayer
 
-from transformers.models.llama.modeling_llama import (
+from transformers.models.qwen2.modeling_qwen2 import (
     apply_rotary_pos_emb,
     repeat_kv,
-    LlamaMLP,
-    LlamaRMSNorm,
+    Qwen2MLP,
+    Qwen2RMSNorm,
 )
 
 logger = logging.get_logger(__name__)
@@ -143,16 +143,14 @@ def eager_attention_forward(
     if scale is not None:
         attn_output[:, scale["heads"], :, :] = attn_output[:, scale["heads"], :, :] * 1e-3
     attn_output = attn_output / attn_output.norm() * attn_output_o.norm()
-    
-    del attn_output_o
 
     return attn_output, attn_weights
 
 
-class LlamaAttention(nn.Module):
+class Qwen2Attention(nn.Module):
     """Multi-headed attention from 'Attention Is All You Need' paper"""
 
-    def __init__(self, config: LlamaConfig, layer_idx: int):
+    def __init__(self, config: Qwen2Config, layer_idx: int):
         super().__init__()
         self.config = config
         self.layer_idx = layer_idx
@@ -162,18 +160,18 @@ class LlamaAttention(nn.Module):
         self.attention_dropout = config.attention_dropout
         self.is_causal = True
 
-        self.q_proj = nn.Linear(
-            config.hidden_size, config.num_attention_heads * self.head_dim, bias=config.attention_bias
-        )
-        self.k_proj = nn.Linear(
-            config.hidden_size, config.num_key_value_heads * self.head_dim, bias=config.attention_bias
-        )
-        self.v_proj = nn.Linear(
-            config.hidden_size, config.num_key_value_heads * self.head_dim, bias=config.attention_bias
-        )
-        self.o_proj = nn.Linear(
-            config.num_attention_heads * self.head_dim, config.hidden_size, bias=config.attention_bias
-        )
+        self.q_proj = nn.Linear(config.hidden_size, config.num_attention_heads * self.head_dim, bias=True)
+        self.k_proj = nn.Linear(config.hidden_size, config.num_key_value_heads * self.head_dim, bias=True)
+        self.v_proj = nn.Linear(config.hidden_size, config.num_key_value_heads * self.head_dim, bias=True)
+        self.o_proj = nn.Linear(config.num_attention_heads * self.head_dim, config.hidden_size, bias=False)
+        
+        # Qwen2 specific: sliding window support
+        self.sliding_window = getattr(config, 'sliding_window', None)
+        if hasattr(config, 'layer_types') and layer_idx < len(config.layer_types):
+            if config.layer_types[layer_idx] == "sliding_attention":
+                self.sliding_window = config.sliding_window
+        else:
+            self.sliding_window = None
 
     def forward(
         self,
@@ -237,7 +235,7 @@ class LlamaAttention(nn.Module):
                 zero_tensor = self.o_proj(zero_tensor.reshape(*input_shape, -1).contiguous()[:, -1, :]).mean(dim=0)
                 refusal_vector = self.refusal_head["refusal_vector"]
                 # rescale zero vector and refusal_vector to the same norm
-                score = torch.dot(zero_tensor.cpu(), refusal_vector.cpu()) / (refusal_vector.norm().item())
+                score = torch.dot(zero_tensor.cpu(), refusal_vector.to(zero_tensor.dtype)) / (refusal_vector.to(zero_tensor.dtype).norm().item())
                 all_outputs.append(score.item())
                 
             if len(self.refusal_head["all_outputs"]) == 0:
@@ -249,17 +247,24 @@ class LlamaAttention(nn.Module):
         attn_output = attn_output.reshape(*input_shape, -1).contiguous()
         attn_output = self.o_proj(attn_output)
         return attn_output, attn_weights
+
  
-class LlamaDecoderLayer(GradientCheckpointingLayer):
-    def __init__(self, config: LlamaConfig, layer_idx: int):
+class Qwen2DecoderLayer(GradientCheckpointingLayer):
+    def __init__(self, config: Qwen2Config, layer_idx: int):
         super().__init__()
         self.hidden_size = config.hidden_size
 
-        self.self_attn = LlamaAttention(config=config, layer_idx=layer_idx)
+        self.self_attn = Qwen2Attention(config=config, layer_idx=layer_idx)
 
-        self.mlp = LlamaMLP(config)
-        self.input_layernorm = LlamaRMSNorm(config.hidden_size, eps=config.rms_norm_eps)
-        self.post_attention_layernorm = LlamaRMSNorm(config.hidden_size, eps=config.rms_norm_eps)
+        self.mlp = Qwen2MLP(config)
+        self.input_layernorm = Qwen2RMSNorm(config.hidden_size, eps=config.rms_norm_eps)
+        self.post_attention_layernorm = Qwen2RMSNorm(config.hidden_size, eps=config.rms_norm_eps)
+        
+        # Qwen2 specific: attention type tracking
+        if hasattr(config, 'layer_types') and layer_idx < len(config.layer_types):
+            self.attention_type = config.layer_types[layer_idx]
+        else:
+            self.attention_type = "full_attention"  # default
 
     def forward(
         self,
@@ -301,7 +306,7 @@ class LlamaDecoderLayer(GradientCheckpointingLayer):
         return hidden_states
 
 
-def enable_monkey_patched_llama(model):
+def enable_monkey_patched_qwen(model):
     # recursively patch the model to the attention layer
     def recursive_patch(model):
         for name, module in reversed(model._modules.items()):
@@ -311,13 +316,13 @@ def enable_monkey_patched_llama(model):
                 )
             if "self_attn" == name[-9:]:
                 model._modules[name].forward = types.MethodType(
-                    LlamaAttention.forward, model._modules[name]
+                    Qwen2Attention.forward, model._modules[name]
                 )
 
     recursive_patch(model)
 
-def enable_monkey_patched_llama_decoder(model):
-    """Monkey patch the LlamaDecoderLayer forward method"""
+def enable_monkey_patched_qwen_decoder(model):
+    """Monkey patch the Qwen2DecoderLayer forward method"""
     def recursive_patch(model):
         for name, module in reversed(model._modules.items()):
             if len(list(module.children())) > 0:
@@ -325,7 +330,7 @@ def enable_monkey_patched_llama_decoder(model):
             # Check if this is a decoder layer by looking for common patterns
             if hasattr(module, 'self_attn') and hasattr(module, 'mlp') and hasattr(module, 'input_layernorm'):
                 model._modules[name].forward = types.MethodType(
-                    LlamaDecoderLayer.forward, model._modules[name]
+                    Qwen2DecoderLayer.forward, model._modules[name]
                 )
     
     recursive_patch(model)
@@ -369,4 +374,4 @@ def set_thinking_scale_heads(model, head_indices, layer_idx=None):
         add_property(model, f"layers.{layer_idx}.self_attn", "thinking_scale_heads", head_indices)
     else:
         # Set for all attention layers
-        add_property(model, "self_attn", "thinking_scale_heads", head_indices)
+        add_property(model, "self_attn", "thinking_scale_heads", head_indices) 

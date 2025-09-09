@@ -1,6 +1,5 @@
 python3 run.py plot_multiple_prober_results \
     --pt_paths outputs/fig/instruct_files.json \
-    --title "Prober Results Comparison" \
     --save_path outputs/fig/instruct_prober.pdf
 
 python3 fig/draw_refusal_score.py \

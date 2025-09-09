@@ -3,6 +3,69 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 from tqdm import tqdm
 from ..model.modeling_llama import enable_monkey_patched_llama, add_property
 
+def detect_model_type(model_name_or_path: str) -> str:
+    """
+    Detect model type based on model name or path
+    
+    Args:
+        model_name_or_path: Model name or path
+        
+    Returns:
+        str: Model type ('llama', 'qwen', 'unknown')
+    """
+    model_name_lower = model_name_or_path.lower()
+    
+    if any(keyword in model_name_lower for keyword in ['llama', 'deepseek']):
+        return 'llama'
+    elif any(keyword in model_name_lower for keyword in ['qwen']):
+        return 'qwen'
+    else:
+        return 'unknown'
+
+def enable_appropriate_monkey_patch(model, model_name_or_path: str = None):
+    """
+    Enable the appropriate monkey patch based on model type
+    
+    Args:
+        model: The model to patch
+        model_name_or_path: Optional model name/path for type detection
+    """
+    if model_name_or_path:
+        model_type = detect_model_type(model_name_or_path)
+    else:
+        # Try to detect from model config
+        config_name = model.config.__class__.__name__.lower()
+        if 'llama' in config_name or 'deepseek' in config_name:
+            model_type = 'llama'
+        elif 'qwen' in config_name:
+            model_type = 'qwen'
+        else:
+            model_type = 'unknown'
+    
+    if model_type == 'llama':
+        enable_monkey_patched_llama(model)
+    elif model_type == 'qwen':
+        from ..model.modeling_qwen import enable_monkey_patched_qwen
+        enable_monkey_patched_qwen(model)
+    else:
+        print(f"Warning: Unknown model type, falling back to Llama monkey patch")
+        enable_monkey_patched_llama(model)
+
+def clean_property(model, module_name, property_name):
+    """Universal clean_property function that works with both Llama and Qwen models"""
+    # recursively patch the model
+    def recursive_patch(model):
+        for name, module in reversed(model._modules.items()):
+            if len(list(module.children())) > 0:
+                recursive_patch(
+                    module,
+                )
+            if module_name in name:
+                if hasattr(model._modules[name], property_name):
+                    delattr(model._modules[name], property_name)
+    
+    recursive_patch(model)
+
 def add_scale(
     model: AutoModelForCausalLM,
     head_ablation_data: list,
@@ -10,7 +73,9 @@ def add_scale(
     head_enhancement_data: list = None,
     enhancement_value: float = 1,
 ):
-    enable_monkey_patched_llama(model)
+    # Automatically detect and enable appropriate monkey patch
+    enable_appropriate_monkey_patch(model)
+    
     total = {}
     for idx in range(len(head_ablation_data)):
         layer_idx = head_ablation_data[idx]["layer_idx"]
@@ -100,14 +165,15 @@ def batch_probe(
             return_tensors="pt",
         ).to(model.device)
 
-        outputs = model(**inputs,output_hidden_states=True)
+        outputs = model(**inputs, output_hidden_states=True)
         hidden_states = outputs.hidden_states[layer_idx]
-        prober_output = torch.sigmoid(prober(
-            hidden_states[:,position_idx,:].squeeze(0).to(torch.float32)
-        )).sum().item()  # Shape: [seq_len, 1] or [seq_len]
+        
+        # Extract only the needed hidden states and convert immediately
+        selected_hidden_states = hidden_states[:, position_idx, :].squeeze(0).to(torch.float32)
+        
+        # Run prober and get result immediately
+        prober_output = torch.sigmoid(prober(selected_hidden_states)).cpu().sum().item()
         total_prober_output += prober_output
-    
-    del inputs, outputs, batch_text, batch_messages, hidden_states, prober_output
     
     return total_prober_output / len(messages)
 

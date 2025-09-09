@@ -4,6 +4,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 from .utils import batch_get_hidden_states
 from src.inference.refusal import refusal_words
 from src.model.modeling_llama import add_property, enable_monkey_patched_llama
+from src.model.modeling_qwen import enable_monkey_patched_qwen
 
 @torch.no_grad()
 def get_refusal_vector(
@@ -96,7 +97,10 @@ def find_refusal_head(
     )
 
     # Enable monkey patching to use custom attention forward method
-    enable_monkey_patched_llama(model)
+    if "llama" in model_name.lower():
+        enable_monkey_patched_llama(model)
+    elif "qwen" in model_name.lower():
+        enable_monkey_patched_qwen(model)
 
     with open(json_path, "r") as f:
         data = json.load(f)[:truncate_num] if truncate_num is not None else json.load(f)
@@ -111,7 +115,7 @@ def find_refusal_head(
                 # Create a unique refusal_head object for each layer
                 setattr(module, "refusal_head", {
                     "all_outputs": [],
-                    "refusal_vector": refusal_direction[target_layer_idx]  # Using same direction for all layers as requested
+                    "refusal_vector": refusal_direction  # Using same direction for all layers as requested
                 })
     
     add_refusal_head_to_layers(model, refusal_direction, layer_idx)

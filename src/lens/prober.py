@@ -97,7 +97,7 @@ def extract_hidden_states(
             print(f"skip idx={idx} empty thinking span")
             continue
 
-        feat = layer_h[:, -3:, :].mean(dim=1).squeeze(0)
+        feat = layer_h[:, :, :].mean(dim=1).squeeze(0)
 
         # check if nan in feat
         if torch.isnan(feat).any():
@@ -530,6 +530,44 @@ def _create_layer_heatmap(layer_results, ckpt_path, item_type):
     print(f"Layer heatmap saved to: {heatmap_save_path}")
     
     plt.close()
+
+
+def extract_prober_weights(
+    ckpt_path: str,
+    save_path: str = None,
+):
+    """
+    Extract the d×1 weight from a linear prober checkpoint and save it as a d-dimensional tensor.
+    
+    Args:
+        ckpt_path: Path to the linear prober checkpoint (.pt file)
+        save_path: Path to save the extracted weights. If None, uses ckpt_path with '_weights' suffix
+    """
+    device = "cpu"  # Load on CPU for extraction
+    
+    # Load checkpoint
+    ckpt = torch.load(ckpt_path, map_location=device)
+    
+    # Extract the linear layer weight (shape: [1, d])
+    linear_weight = ckpt["state_dict"]["linear.weight"]  # Shape: [1, d]
+    
+    # Squeeze to get d-dimensional vector
+    weight_vector = linear_weight.squeeze(0)  # Shape: [d]
+    
+    print(f"Extracted weight vector with shape: {weight_vector.shape}")
+    print(f"Original weight shape: {linear_weight.shape}")
+    
+    # Determine save path
+    if save_path is None:
+        save_path = ckpt_path.replace('.pt', '_weights.pt')
+    
+    # Save the weight vector
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    torch.save(weight_vector, save_path)
+    print(f"Weight vector saved to: {save_path}")
+    
+    # Return a simple string message instead of the tensor to avoid Fire inspection issues
+    return f"Successfully extracted weight vector with shape {weight_vector.shape} and saved to {save_path}"
 
 
 def load_pt(

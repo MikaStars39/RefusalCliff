@@ -286,8 +286,8 @@ def plot_attention_heatmap_filtered(
                    interpolation='nearest')
     
     # Configure axes
-    ax.set_xlabel('Head Index', fontsize=16, fontweight='normal', color='#333333')
-    ax.set_ylabel('Layer Index', fontsize=16, fontweight='normal', color='#333333')
+    ax.set_xlabel('Head Index', fontsize=12, fontweight='normal', color='#333333')
+    ax.set_ylabel('Layer Index', fontsize=12, fontweight='normal', color='#333333')
     
     threshold_text = f" ({threshold_mode} {threshold})" if threshold is not None else ""
     ax.set_title(f'Filtered Attention Head {value_key.replace("_", " ").title()} Heatmap{threshold_text}', 

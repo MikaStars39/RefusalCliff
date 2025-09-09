@@ -8,6 +8,7 @@ from src.lens.prober import (
     extract_hidden_states, 
     train_linear_prober,
     test_prober_by_layers,
+    extract_prober_weights,
 )
 from src.lens.attn_head import (
     trace_attn_head, 
@@ -47,6 +48,7 @@ if __name__ == "__main__":
             "get_refusal_vector": get_refusal_vector,
             "refusal_direction_generation": refusal_direction_generation,
             "find_refusal_head": find_refusal_head,
+            "extract_prober_weights": extract_prober_weights,
             # utils
             "split_thinking_response": split_thinking_response,
         }

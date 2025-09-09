@@ -111,21 +111,53 @@ python3 run.py test_prober \
 # Tracing Attention Heads
 
 ```python
-CUDA_VISIBLE_DEVICES=0,1,2,3 python3 run.py trace_attn_head \
+CUDA_VISIBLE_DEVICES=2,3 python3 run.py trace_attn_head \
     --model_name deepseek-ai/DeepSeek-R1-Distill-Qwen-7B \
     --json_path outputs/refusal/DeepSeek-R1-Distill-Qwen-7B/jbbench.json \
-    --prober_path outputs/refusal/DeepSeek-R1-Distill-Qwen-7B/linear_prober_normalized_comparison_results.pt
-    --layer_idx 32 \
+    --prober_path outputs/refusal/DeepSeek-R1-Distill-Qwen-7B/linear_prober.pt \
+    --layer_idx 28 \
     --position_idx -1 \
-    --batch_size 32 \
-    --max_new_tokens 8 \
-    --temperature 0.0 \
-    --do_sample False \
-    --truncate_num 1 \
+    --batch_size 8 \
+    --truncate_num 256 \
     --save_path outputs/refusal/DeepSeek-R1-Distill-Qwen-7B/head_tracing.json \
     --item_type "original_item"
+
+python3 run.py extract_prober_weights \
+    --ckpt_path outputs/refusal/DeepSeek-R1-Distill-Qwen-7B/linear_prober.pt \
+    --save_path outputs/refusal/DeepSeek-R1-Distill-Qwen-7B/refusal_vector_weights.pt
+
+CUDA_VISIBLE_DEVICES=0,1 python3 run.py ablating_attn_head \
+    --model_name deepseek-ai/DeepSeek-R1-Distill-Qwen-7B \
+    --json_path outputs/refusal/DeepSeek-R1-Distill-Qwen-7B/jbbench.json \
+    --prober_path outputs/refusal/DeepSeek-R1-Distill-Qwen-7B/linear_prober.pt \
+    --batch_size 8 \
+    --truncate_num 64 \
+    --top_n_ablation 16 \
+    --ablation_value 0.01 \
+    --enhancement_value 1 \
+    --item_type "original_item" \
+    --layer_idx 28 \
+    --head_ablation_path outputs/refusal/DeepSeek-R1-Distill-Qwen-7B/head_tracing.json \
+    --head_enhancement_path outputs/refusal/DeepSeek-R1-Distill-Qwen-7B/head_tracing.json
 ```
 
+# Refusal Direction
+
+```python
+CUDA_VISIBLE_DEVICES=0,1 python3 run.py find_refusal_head \
+    --model_name deepseek-ai/DeepSeek-R1-Distill-Qwen-7B \
+    --json_path outputs/refusal/DeepSeek-R1-Distill-Qwen-7B/jbbench.json \
+    --layer_idx 28 \
+    --position_idx -1 \
+    --batch_size 1 \
+    --truncate_num 1 \
+    --save_path outputs/refusal/DeepSeek-R1-Distill-Qwen-7B/head_tracing.json \
+    --item_type "original_item" \
+    --thinking_portion 0 \
+    --refusal_direction_path outputs/refusal/DeepSeek-R1-Distill-Qwen-7B/refusal_vector_weights.pt
+```
+
+# Drawing
 
 ```python
 python3 run analyze_attn_patterns \
@@ -142,10 +174,18 @@ python3 run.py plot_multiple_prober_results \
     --title "Prober Results Comparison" \
     --save_path outputs/fig/prober_results.png
 
+
 python3 fig/draw_attention_heatmap.py plot \
    --data_path="outputs/refusal/llama_8b_last_layer/llama_refusal_direction_outputs.json" \
    --value_key="cosine_similarity" \
    --save_path="outputs/fig/llama_8b_last_layer_refusal_heatmap.png" \
-   --width 3.8 \
-   --height 3
+   --width 5 \
+   --height 4
+
+python3 fig/draw_attention_heatmap.py plot \
+   --data_path="outputs/refusal/DeepSeek-R1-Distill-Qwen-7B/head_tracing.json" \
+   --value_key="cosine_similarity" \
+   --save_path="outputs/fig/qwen7b_refusal_heatmap.png" \
+   --width 5 \
+   --height 4
 ```

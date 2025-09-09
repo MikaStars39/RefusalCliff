@@ -1,11 +1,11 @@
 # import pdb
 import torch
 import json
+import os
 
 from tqdm import tqdm
 from transformers import AutoTokenizer, AutoModelForCausalLM
-from src.lens.utils import batch_gen, add_scale, batch_probe
-from src.model.modeling_llama import clean_property
+from src.lens.utils import add_scale, batch_probe, enable_appropriate_monkey_patch, clean_property
 
 @torch.no_grad()
 def ablating_attn_head(
@@ -75,7 +75,7 @@ def ablating_attn_head(
 
     print(f"original prober output: {prober_output}")
 
-    add_scale(model, head_ablation_data, ablation_value, head_enhancement_data, enhancement_value)
+    add_scale(model, head_ablation_data, ablation_value, None, enhancement_value)
 
     prober_output = batch_probe(
         tokenizer=tokenizer,
@@ -91,25 +91,22 @@ def ablating_attn_head(
 
 @torch.no_grad()
 def trace_attn_head(
-    model_name: str = "deepseek-ai/DeepSeek-R1-Distill-Llama-8B",
-    json_path: str = "/diancpfs/user/qingyu/persona/outputs/inference/DeepSeek-R1-Distill-Llama-8B/jbbench_distill_llama_8b.json",
-    prober_path: str = None,
-    layer_idx: int = 21,
-    position_idx: int = 0,
-    batch_size: int = 32,
-    max_new_tokens: int = 8,
-    temperature: float = 0.7,
-    do_sample: bool = True,
-    truncate_num: int = 128,
+    model_name: str,
+    json_path: str,
+    prober_path: str,
+    layer_idx: int,
+    position_idx: int,
+    batch_size: int,
+    truncate_num: int,
+    save_path: str,
+    item_type: str,
     thinking_portion: float = 0.0,
-    save_path: str = "outputs/tracing/llama_outputs.json",
-    item_type: str = "original_item",
 ):
     
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     model = AutoModelForCausalLM.from_pretrained(
-        model_name, device_map="auto", torch_dtype=torch.bfloat16, attn_implementation="flash_attention_2"
-    )
+        model_name, device_map="auto", torch_dtype=torch.bfloat16
+    ).eval()
 
     with open(json_path, "r") as f:
         data = json.load(f)[:truncate_num]
@@ -140,7 +137,7 @@ def trace_attn_head(
         elif thinking_portion > 0.0:
             thinking[-1] = thinking[-1][:int(len(thinking[-1]) * thinking_portion)]
     
-    original_prober_output = batch_probe(
+    prober_output = batch_probe(
         tokenizer=tokenizer,
         model=model,
         prober=prober,
@@ -150,6 +147,9 @@ def trace_attn_head(
         position_idx=position_idx,
         layer_idx=layer_idx,
     )
+    print(f"original prober output: {prober_output}")
+
+    enable_appropriate_monkey_patch(model)
 
     for per_layer_idx in tqdm(range(model.config.num_hidden_layers)):
         for per_head_idx in range(model.config.num_attention_heads):
@@ -162,55 +162,31 @@ def trace_attn_head(
                 }
             ]
             head_enhancement_data = None
+
+            # probe the head if prober is provided
+            add_scale(model, head_ablation_data, 0.001, head_enhancement_data, 10.0)
+
+            prober_output = batch_probe(
+                tokenizer=tokenizer,
+                model=model,
+                prober=prober,
+                messages=batch_messages,
+                thinking=thinking,
+                batch_size=batch_size,
+                position_idx=position_idx,
+                layer_idx=layer_idx,
+            )
+            all_outputs.append({
+                "layer_idx": per_layer_idx,
+                "head_idx": per_head_idx,
+                "prober_output": prober_output,
+            })
             
-            if prober_path is not None:
-
-                # probe the head if prober is provided
-                add_scale(model, head_ablation_data, 0.001, head_enhancement_data, 10.0)
-
-                prober_output = batch_probe(
-                    tokenizer=tokenizer,
-                    model=model,
-                    prober=prober,
-                    messages=batch_messages,
-                    thinking=thinking,
-                    batch_size=batch_size,
-                    position_idx=position_idx,
-                    layer_idx=layer_idx,
-                )
-                all_outputs.append({
-                    "layer_idx": per_layer_idx,
-                    "head_idx": per_head_idx,
-                    "prober_output": original_prober_output - prober_output,
-                })
-                
-                clean_property(model, "self_attn", "scale")
-            else:
-                add_scale(model, head_ablation_data, 0.01, head_enhancement_data, 100.0)
-                # else, generate the response
-                outputs = batch_gen(
-                    tokenizer=tokenizer, 
-                    model=model, 
-                    messages=batch_messages, 
-                    thinking=thinking,
-                    batch_size=batch_size,
-                    max_new_tokens=max_new_tokens,
-                    temperature=temperature,
-                    do_sample=do_sample,
-                )
-                for idx, item in enumerate(outputs):
-                    all_outputs.append(
-                        {
-                            "prompt": data[idx]["original_item"]["prompt"],
-                            "thinking": data[idx][item_type]["thinking"],
-                            "response": item,
-                        }
-                    )
-                clean_property(model, "self_attn", "scale")
+            # Clean up the scale property to avoid accumulation of ablated heads
+            clean_property(model, "self_attn", "scale")
 
     # Sort by prober_output in descending order (highest scores first)
-    if prober_path is not None:
-        all_outputs.sort(key=lambda x: x["prober_output"], reverse=True)
+    all_outputs.sort(key=lambda x: x["prober_output"], reverse=True)
     
     with open(save_path, "w") as f:
         json.dump(all_outputs, f, indent=4)
@@ -246,7 +222,6 @@ def analyze_attn_patterns(
         thinking_portion: Thinking portion ratio
         create_plots: Whether to create visualization plots (default: False)
     """
-    import os
     import numpy as np
     
     if create_plots:
@@ -296,10 +271,8 @@ def analyze_attn_patterns(
             thinking[-1] = ""
         elif thinking_portion > 0.0:
             thinking[-1] = thinking[-1][:int(len(thinking[-1]) * thinking_portion)]
-    
-    # Enable monkey patching to get attention weights
-    from src.model.modeling_llama import enable_monkey_patched_llama
-    enable_monkey_patched_llama(model)
+
+    enable_appropriate_monkey_patch(model)
     
     # Store all attention patterns
     all_attention_patterns = {}
