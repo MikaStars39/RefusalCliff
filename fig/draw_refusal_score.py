@@ -5,8 +5,11 @@ from typing import List, Optional, Dict, Any
 import json
 import numpy as np
 
-# Set matplotlib style to match programmer aesthetics
-plt.style.use('default')  # Reset to default first
+# Set matplotlib style to use scienceplots retro
+import scienceplots
+plt.style.use(['science', 'no-latex', 'retro'])
+
+# Override specific settings to maintain our preferences
 plt.rcParams.update({
     'font.family': 'monospace',
     'font.monospace': ['Consolas', 'DejaVu Sans Mono', 'Courier New', 'monospace'],
@@ -17,30 +20,24 @@ plt.rcParams.update({
     'ytick.labelsize': 12,
     'legend.fontsize': 10,
     'figure.titlesize': 18,
-    'axes.linewidth': 0.8,
-    'grid.linewidth': 0.5,
-    'lines.linewidth': 2.0,
-    'axes.spines.top': False,
-    'axes.spines.right': False,
     'axes.facecolor': '#f8f8f8',  # Light gray background for plot area
     'figure.facecolor': 'white',  # White background for figure
     'savefig.facecolor': 'white',
     'savefig.edgecolor': 'none',
-    'grid.alpha': 0.4,
-    'axes.edgecolor': '#cccccc',  # Light gray for axes
-    'xtick.color': '#666666',  # Light gray for tick labels
-    'ytick.color': '#666666',
-    'text.color': '#333333',  # Dark gray for text
-    'axes.labelcolor': '#333333',
-    'text.usetex': False,
+    'axes.spines.top': False,  # Remove top spine
+    'axes.spines.right': False,  # Remove right spine
+    'xtick.direction': 'out',  # Ticks point outward
+    'ytick.direction': 'out',  # Ticks point outward
+    'xtick.minor.visible': False,  # Hide minor x ticks
+    'ytick.minor.visible': False,  # Hide minor y ticks
 })
 
 def plot_multiple_prober_results(
     pt_paths: str,  # Changed to string for JSON file path
     save_path: Optional[str] = None,
-    figsize: tuple = (6, 6),
+    figsize: tuple = (6, 4),
     colors: Optional[List[str]] = None,
-    linewidth: float = 1.0,
+    linewidth: float = 2.5,
 ) -> None:
     """
     Plot multiple prober result .pt files on a single figure with academic style.
@@ -62,20 +59,10 @@ def plot_multiple_prober_results(
     if not pt_file_paths:
         raise ValueError("At least one .pt file path must be provided")
     
-    # Academic color palette - sophisticated and distinguishable colors
+    # Use scienceplots retro color palette
     if colors is None:
-        colors = [
-            '#8B4513',  # Saddle Brown (similar to the chart)
-            '#B22222',  # Fire Brick Red
-            '#228B22',  # Forest Green
-            '#4169E1',  # Royal Blue
-            '#9932CC',  # Dark Orchid
-            '#FF8C00',  # Dark Orange
-            '#DC143C',  # Crimson
-            '#2F4F4F',  # Dark Slate Gray
-            '#8B008B',  # Dark Magenta
-            '#556B2F'   # Dark Olive Green
-        ]
+        # Get retro colors from matplotlib's current color cycle
+        colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
     
     # Create figure with programmer styling
     fig, ax = plt.subplots(figsize=figsize)
@@ -165,8 +152,8 @@ def plot_multiple_prober_results(
             continue
     
     # Configure plot with programmer styling
-    ax.set_xlabel('Normalized Position', fontsize=16, fontweight='normal', color='#333333')
-    ax.set_ylabel('Refusal Score', fontsize=16, fontweight='normal', color='#333333')
+    ax.set_xlabel('Normalized Position', fontsize=12, fontweight='normal', color='#333333')
+    ax.set_ylabel('Refusal Score', fontsize=12, fontweight='normal', color='#333333')
     
     # Add grayer background for the last 10% of x-axis (right 10%)
     ax.axvspan(90, 105, alpha=0.2, color='#c8c8c8', zorder=0)  # More subtle background

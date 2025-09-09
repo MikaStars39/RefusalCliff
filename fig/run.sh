@@ -1,7 +1,15 @@
 python3 run.py plot_multiple_prober_results \
     --pt_paths outputs/fig/instruct_files.json \
     --title "Prober Results Comparison" \
-    --save_path outputs/fig/instruct_prober.png
+    --save_path outputs/fig/instruct_prober.pdf
+
+python3 fig/draw_refusal_score.py \
+    --pt_paths outputs/fig/pt_files.json \
+    --save_path outputs/fig/pt_refusal_score.pdf
+
+python3 fig/draw_bar_chart.py \
+    --data_path outputs/fig/bar_data.json \
+    --save_path outputs/fig/bar_chart.pdf
 
 
 python3 fig/draw_attention_heatmap.py plot \

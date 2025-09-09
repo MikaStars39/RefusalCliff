@@ -5,34 +5,31 @@ from typing import List, Optional, Dict, Any
 import json
 import numpy as np
 
-# Set matplotlib style to match programmer aesthetics
-plt.style.use('default')  # Reset to default first
+# Set matplotlib style to use scienceplots retro
+import scienceplots
+plt.style.use(['science', 'no-latex', 'retro'])
+
+# Override specific settings to maintain our preferences
 plt.rcParams.update({
     'font.family': 'monospace',
     'font.monospace': ['Consolas', 'DejaVu Sans Mono', 'Courier New', 'monospace'],
-    'font.size': 12,
+    'font.size': 8,
     'axes.titlesize': 16,
     'axes.labelsize': 14,
-    'xtick.labelsize': 12,
+    'xtick.labelsize': 8,  # Smaller x-axis tick labels
     'ytick.labelsize': 12,
     'legend.fontsize': 10,
     'figure.titlesize': 18,
-    'axes.linewidth': 0.8,
-    'grid.linewidth': 0.5,
-    'lines.linewidth': 2.0,
-    'axes.spines.top': False,
-    'axes.spines.right': False,
     'axes.facecolor': '#f8f8f8',  # Light gray background for plot area
     'figure.facecolor': 'white',  # White background for figure
     'savefig.facecolor': 'white',
     'savefig.edgecolor': 'none',
-    'grid.alpha': 0.4,
-    'axes.edgecolor': '#cccccc',  # Light gray for axes
-    'xtick.color': '#666666',  # Light gray for tick labels
-    'ytick.color': '#666666',
-    'text.color': '#333333',  # Dark gray for text
-    'axes.labelcolor': '#333333',
-    'text.usetex': False,
+    'axes.spines.top': False,  # Remove top spine
+    'axes.spines.right': False,  # Remove right spine
+    'xtick.direction': 'out',  # Ticks point outward
+    'ytick.direction': 'out',  # Ticks point outward
+    'xtick.minor.visible': False,  # Hide minor x ticks
+    'ytick.minor.visible': False,  # Hide minor y ticks
 })
 
 def plot_bar_chart_from_dict(
@@ -66,16 +63,10 @@ def plot_bar_chart_from_dict(
     if not values or not labels:
         raise ValueError("Both values and labels must be provided")
     
-    # Ordered color palette - gradual transition from light to dark blues
+    # Use scienceplots retro color palette
     if colors is None:
-        colors = [
-            '#87CEEB',  # Sky Blue (lightest)
-            '#6BB6FF',  # Light Blue
-            '#4A90E2',  # Medium Blue
-            '#4682B4',  # Steel Blue
-            '#4169E1',  # Royal Blue
-            '#1E3A8A',  # Dark Blue (darkest)
-        ]
+        # Get retro colors from matplotlib's current color cycle
+        colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
     
     # Create figure with programmer styling
     fig, ax = plt.subplots(figsize=figsize)
@@ -117,12 +108,13 @@ def plot_bar_chart_from_dict(
                    zorder=5)
     
     # Configure plot with programmer styling - remove title and x-axis label
-    ax.set_ylabel("Attack Successful Rate", fontsize=16, fontweight='normal', color='#333333')
+    ax.set_ylabel("Attack Successful Rate", fontsize=12, fontweight='normal', color='#333333')
     
     # Set x-axis labels
     ax.set_xticks(x_pos)
-    ax.set_xticklabels(labels, rotation=45 if len(max(labels, key=len)) > 8 else 0, 
-                       ha='right' if len(max(labels, key=len)) > 8 else 'center')
+    ax.set_xticklabels(labels, rotation=20 if len(max(labels, key=len)) > 8 else 0, 
+                       ha='right' if len(max(labels, key=len)) > 8 else 'center',
+                       fontsize=8)  # Even smaller font size for x-axis labels
     
     # Set y-axis limits to 0-100% (0.0-1.0 in decimal)
     ax.set_ylim(0, 1.0)
@@ -134,7 +126,9 @@ def plot_bar_chart_from_dict(
     ax.yaxis.set_major_formatter(FuncFormatter(percent_formatter))
     
     # Customize ticks with light colors
-    ax.tick_params(axis='both', which='major', labelsize=12, width=0.8, 
+    ax.tick_params(axis='x', which='major', labelsize=10, width=0.8, 
+                   color='#cccccc', labelcolor='#666666')
+    ax.tick_params(axis='y', which='major', labelsize=12, width=0.8, 
                    color='#cccccc', labelcolor='#666666')
     
     # Set light colored spines
@@ -228,9 +222,9 @@ def plot_grouped_bar_chart(
                        fontsize=9, color='#333333')
     
     # Configure plot
-    ax.set_xlabel(xlabel, fontsize=16, fontweight='normal', color='#333333')
-    ax.set_ylabel(ylabel, fontsize=16, fontweight='normal', color='#333333')
-    ax.set_title(title, fontsize=18, fontweight='normal', color='#333333', pad=20)
+    ax.set_xlabel(xlabel, fontsize=12, fontweight='normal', color='#333333')
+    ax.set_ylabel(ylabel, fontsize=12, fontweight='normal', color='#333333')
+    ax.set_title(title, fontsize=12, fontweight='normal', color='#333333', pad=20)
     ax.set_xticks(x)
     ax.set_xticklabels(categories)
     
@@ -274,7 +268,7 @@ if __name__ == "__main__":
         "R1-LLaMA-8B": 0.672,
         "R1-Qwen-7B": 0.525,
         "Hermes-14B": 0.500,
-        "Skywork-OR1-8B": 0.425,
+        "Skywork-OR1-7B": 0.425,
         "R1-Qwen-14B": 0.225,
         "QwQ-32B": 0.01,
         "Qwen3-Thinking-4B": 0.025,
@@ -288,5 +282,5 @@ if __name__ == "__main__":
     plot_bar_chart_from_dict(
         data=data,
         save_path="outputs/fig/model_comparison.pdf",
-        figsize=(8, 6)
+        figsize=(6, 4)
     ) 

@@ -107,9 +107,23 @@ python3 run.py test_prober \
     --thinking_portion 0 \
     --item_type "original_item"
 ```
-   
-```python
 
+# Tracing Attention Heads
+
+```python
+CUDA_VISIBLE_DEVICES=0,1,2,3 python3 run.py trace_attn_head \
+    --model_name deepseek-ai/DeepSeek-R1-Distill-Qwen-7B \
+    --json_path outputs/refusal/DeepSeek-R1-Distill-Qwen-7B/jbbench.json \
+    --prober_path outputs/refusal/DeepSeek-R1-Distill-Qwen-7B/linear_prober_normalized_comparison_results.pt
+    --layer_idx 32 \
+    --position_idx -1 \
+    --batch_size 32 \
+    --max_new_tokens 8 \
+    --temperature 0.0 \
+    --do_sample False \
+    --truncate_num 1 \
+    --save_path outputs/refusal/DeepSeek-R1-Distill-Qwen-7B/head_tracing.json \
+    --item_type "original_item"
 ```
 
 

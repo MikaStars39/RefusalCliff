@@ -104,7 +104,6 @@ def trace_attn_head(
     thinking_portion: float = 0.0,
     save_path: str = "outputs/tracing/llama_outputs.json",
     item_type: str = "original_item",
-    state_save_path: str = None,
 ):
     
     tokenizer = AutoTokenizer.from_pretrained(model_name)
@@ -130,7 +129,9 @@ def trace_attn_head(
         prober = LinearProber(in_dim, hidden_dim).to(model.device)
         prober.load_state_dict(ckpt["state_dict"])
         prober.eval()
-    
+    else:
+        raise ValueError("Prober checkpoint path is required")
+
     for item in data:
         batch_messages.append([{"role": "user", "content": item["original_item"]["prompt"]}])
         thinking.append(item[item_type]["thinking"])
