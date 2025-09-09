@@ -11,7 +11,7 @@ from src.model.modeling_llama import clean_property
 def ablating_attn_head(
     model_name: str = "deepseek-ai/DeepSeek-R1-Distill-Llama-8B",
     json_path: str = "/diancpfs/user/qingyu/persona/outputs/inference/DeepSeek-R1-Distill-Llama-8B/jbbench_distill_llama_8b.json",
-    prober_ckpt_path: str = None,
+    prober_path: str = None,
     layer_idx: int = 21,
     position_idx: int = 0,
     batch_size: int = 32,
@@ -53,7 +53,7 @@ def ablating_attn_head(
 
     from src.lens.prober import LinearProber
     # load checkpoint
-    ckpt = torch.load(prober_ckpt_path, map_location=model.device)
+    ckpt = torch.load(prober_path, map_location=model.device)
     in_dim = ckpt["in_dim"]
     hidden_dim = 1024  # use the same as training; change if you trained with a different value
 
@@ -93,7 +93,7 @@ def ablating_attn_head(
 def trace_attn_head(
     model_name: str = "deepseek-ai/DeepSeek-R1-Distill-Llama-8B",
     json_path: str = "/diancpfs/user/qingyu/persona/outputs/inference/DeepSeek-R1-Distill-Llama-8B/jbbench_distill_llama_8b.json",
-    prober_ckpt_path: str = None,
+    prober_path: str = None,
     layer_idx: int = 21,
     position_idx: int = 0,
     batch_size: int = 32,
@@ -118,10 +118,10 @@ def trace_attn_head(
     thinking = []
     all_outputs = []
 
-    if prober_ckpt_path is not None:
+    if prober_path is not None:
         from src.lens.prober import LinearProber
             # load checkpoint
-        ckpt = torch.load(prober_ckpt_path, map_location=model.device)
+        ckpt = torch.load(prober_path, map_location=model.device)
         in_dim = ckpt["in_dim"]
         hidden_dim = 1024  # use the same as training; change if you trained with a different value
 
@@ -163,7 +163,7 @@ def trace_attn_head(
             ]
             head_enhancement_data = None
             
-            if prober_ckpt_path is not None:
+            if prober_path is not None:
 
                 # probe the head if prober is provided
                 add_scale(model, head_ablation_data, 0.001, head_enhancement_data, 10.0)
@@ -209,7 +209,7 @@ def trace_attn_head(
                 clean_property(model, "self_attn", "scale")
 
     # Sort by prober_output in descending order (highest scores first)
-    if prober_ckpt_path is not None:
+    if prober_path is not None:
         all_outputs.sort(key=lambda x: x["prober_output"], reverse=True)
     
     with open(save_path, "w") as f:
