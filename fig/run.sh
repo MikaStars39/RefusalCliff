@@ -1,6 +1,12 @@
-python3 run.py plot_multiple_prober_results \
+python3 fig/draw_refusal_score.py \
     --pt_paths outputs/fig/instruct_files.json \
+    --figsize "(4.5, 3)" \
     --save_path outputs/fig/instruct_prober.pdf
+
+python3 fig/draw_refusal_score.py \
+    --pt_paths outputs/fig/layers.json \
+    --figsize "(4.5, 3)" \
+    --save_path outputs/fig/layers_prober.pdf
 
 python3 fig/draw_refusal_score.py \
     --pt_paths outputs/fig/pt_files.json \
