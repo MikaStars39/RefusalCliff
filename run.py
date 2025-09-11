@@ -23,7 +23,12 @@ from src.lens.refusal import (
     get_refusal_vector,
     find_refusal_head,
 )
-
+from src.train.create_data import (
+    create_malicious_data,
+    mixture_of_thought,
+    merge_then_mix,
+)
+from src.inference.refusal import count_refusal
 import fire
 
 if __name__ == "__main__":
@@ -51,5 +56,11 @@ if __name__ == "__main__":
             "extract_prober_weights": extract_prober_weights,
             # utils
             "split_thinking_response": split_thinking_response,
+            # create data
+            "create_malicious_data": create_malicious_data,
+            "mixture_of_thought": mixture_of_thought,
+            "merge_then_mix": merge_then_mix,
+            # count refusal
+            "count_refusal": count_refusal,
         }
     )

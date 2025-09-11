@@ -97,7 +97,7 @@ def extract_hidden_states(
             print(f"skip idx={idx} empty thinking span")
             continue
 
-        feat = layer_h[:, :, :].mean(dim=1).squeeze(0)
+        feat = layer_h[:, -1, :].squeeze(0)
 
         # check if nan in feat
         if torch.isnan(feat).any():
@@ -218,6 +218,8 @@ def test_prober(
             if prober_output.dim() > 1:
                 prober_output = prober_output.squeeze(-1)  # Make it 1D: [seq_len]
             
+            jbbench_distill_llama_8b[idx][item_type_name]["prober_output"] = float(prober_output[-1].cpu())
+            
             sequences.append(prober_output.cpu())
             max_seq_len = max(max_seq_len, len(prober_output))
 
@@ -278,6 +280,9 @@ def test_prober(
     if len(all_results) == 0:
         print("No valid results found for any item_type")
         return
+    
+    with open(json_path, "w") as f:
+        json.dump(jbbench_distill_llama_8b, f, indent=4)
     
     # Plot all results on the same figure with different colors
     import matplotlib.pyplot as plt

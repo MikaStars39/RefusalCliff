@@ -10,21 +10,19 @@ def process_data(
     split: str = "train",
     output_file: str = "outputs/jbbench.json",
 ):
-    if subset_name is not None:
-        dataset = load_dataset(dataset_name, subset_name, split=split)
-    else:
-        dataset = load_dataset(dataset_name, split=split)
+    json_dict = []  # Initialize json_dict early to avoid UnboundLocalError
     
-    if "wildjailbreak" in dataset_name:
-        json_dict = []
+    if "malicious-prompts" in dataset_name:
+        dataset = load_dataset(dataset_name, split=split)
         for idx, item in enumerate(dataset):
             json_dict.append({
                 "original_item": {
-                    "prompt": item["vanilla"],
+                    "prompt": item["text"],
                 }
             })
-            if idx > 200:
+            if idx == 999:
                 break
+        
     elif "basicv8vc/SimpleQA" in dataset_name:
         json_dict = []
         wikitext = load_dataset("Salesforce/wikitext", "wikitext-2-raw-v1")
@@ -50,6 +48,7 @@ def process_data(
             })
     else:
         json_dict = []
+        dataset = load_dataset(dataset_name, split=split)
         for item in dataset:
             json_dict.append({
                 "original_item": {
@@ -61,8 +60,15 @@ def process_data(
         random.shuffle(json_dict)
         json_dict = json_dict[:250]
         
+    # Ensure the output directory exists
+    import os
+    os.makedirs(os.path.dirname(output_file), exist_ok=True)
+    
+    print(f"Saving {len(json_dict)} items to {output_file}")
     with open(output_file, "w") as f:
         json.dump(json_dict, f, indent=4)
+    
+    print(f"Successfully saved {len(json_dict)} items to {output_file}")
 
 if __name__ == "__main__":
     Fire(process_data)

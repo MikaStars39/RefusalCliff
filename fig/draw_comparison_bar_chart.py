@@ -75,26 +75,41 @@ def plot_comparison_bar_chart(
     # Create bar positions
     x_pos = np.arange(len(labels))
     
-    # Define colors - left bars are lighter (grayer), right bars are darker
-    left_color = '#a0a0a0'  # Light gray for before values
-    right_color = '#404040'  # Dark gray for after values
+    # Get retro colors from matplotlib's current color cycle
+    retro_colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
     
-    # Create bars
-    bars_before = ax.bar(x_pos - bar_width/2, before_values, 
-                        width=bar_width,
-                        color=left_color,
-                        alpha=0.85,
-                        edgecolor='none',
-                        label='Before',
-                        zorder=3)
+    # Create bars with retro colors
+    bars_before = []
+    bars_after = []
     
-    bars_after = ax.bar(x_pos + bar_width/2, after_values, 
-                       width=bar_width,
-                       color=right_color,
-                       alpha=0.85,
-                       edgecolor='none',
-                       label='After',
-                       zorder=3)
+    for i in range(len(labels)):
+        # Use retro color with lighter alpha for before bars
+        color = retro_colors[i % len(retro_colors)]
+        
+        # Before bar (lighter)
+        bar_before = ax.bar(x_pos[i] - bar_width/2, before_values[i], 
+                           width=bar_width,
+                           color=color,
+                           alpha=0.4,  # Much lighter alpha for before bars
+                           edgecolor='none',
+                           zorder=3)
+        bars_before.extend(bar_before)
+        
+        # After bar (normal intensity)
+        bar_after = ax.bar(x_pos[i] + bar_width/2, after_values[i], 
+                          width=bar_width,
+                          color=color,
+                          alpha=0.85,  # Normal alpha for after bars
+                          edgecolor='none',
+                          zorder=3)
+        bars_after.extend(bar_after)
+    
+    # Add legend entries manually (since we created bars individually)
+    from matplotlib.patches import Patch
+    legend_elements = [
+        Patch(facecolor='gray', alpha=0.4, label='Before'),
+        Patch(facecolor='gray', alpha=0.85, label='After')
+    ]
     
     # Add value labels on top of bars if requested
     if show_values:
@@ -159,6 +174,7 @@ def plot_comparison_bar_chart(
     
     # Configure legend
     legend = ax.legend(
+        handles=legend_elements,
         frameon=True,
         fancybox=False,
         edgecolor='#dddddd',
@@ -233,14 +249,11 @@ def plot_comparison_from_json(
 if __name__ == "__main__":
     # Example data - each model has (before, after) values
     data = {
-        "R1-LLaMA-8B": (0.30, 0.60),
         "R1-Qwen-7B": (0.25, 0.52),
-        "Hermes-14B": (0.20, 0.50),
-        "Skywork-OR1-7B": (0.15, 0.42),
+        "R1-LLaMA-8B": (0.30, 0.88),
         "R1-Qwen-14B": (0.10, 0.22),
-        "QwQ-32B": (0.005, 0.01),
-        "Qwen3-Thinking-4B": (0.01, 0.025),
-        "LLaMA-8B-it": (0.008, 0.02),
+        "Hermes-14B": (0.20, 0.50),
+        "Skywork-OR1-7B": (0.15, 0.42)
     }
     
     # Create output directory
@@ -250,7 +263,7 @@ if __name__ == "__main__":
     plot_comparison_bar_chart(
         data=data,
         save_path="outputs/fig/model_comparison_improvement.pdf",
-        title="Model Performance: Before vs After Optimization",
+        title="Head Ablation",
         ylabel="Attack Success Rate",
-        figsize=(10, 6)
-    ) 
+        figsize=(5/4*5, 5)
+    )
