@@ -1,9 +1,9 @@
 import json
 import torch
+from tqdm import tqdm
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from .utils import batch_get_hidden_states
-from src.inference.refusal import refusal_words
-from src.model.modeling_llama import add_property, enable_monkey_patched_llama
+from src.model.modeling_llama import enable_monkey_patched_llama
 from src.model.modeling_qwen import enable_monkey_patched_qwen
 
 @torch.no_grad()
@@ -131,7 +131,7 @@ def find_refusal_head(
         elif thinking_portion > 0.0:
             thinking[-1] = thinking[-1][:int(len(thinking[-1]) * thinking_portion)]
 
-    for idx in range(0, len(batch_messages), batch_size):
+    for idx in tqdm(range(0, len(batch_messages), batch_size)):
         current_batch_messages = batch_messages[idx:idx + batch_size]
         current_thinking = thinking[idx:idx + batch_size]
         
@@ -166,30 +166,6 @@ def find_refusal_head(
         return all_layer_data
     
     layer_data = collect_refusal_head_data(model)
-    
-    # Load prober outputs for sorting (hardcoded path)
-    prober_data = {}
-    prober_outputs_path = "outputs/refusal/llama_8b_last_layer/llama_head_prober_outputs_toxic.json"
-    try:
-        with open(prober_outputs_path, "r") as f:
-            prober_list = json.load(f)
-        # Convert to dict for easy lookup: {layer_idx: {head_idx: prober_output}}
-        for item in prober_list:
-            layer_idx = item["layer_idx"]
-            head_idx = item["head_idx"]
-            prober_output = item["prober_output"]
-            if layer_idx not in prober_data:
-                prober_data[layer_idx] = {}
-            prober_data[layer_idx][head_idx] = prober_output
-        print(f"Loaded prober outputs from {prober_outputs_path}")
-    except FileNotFoundError:
-        print(f"Warning: Prober outputs file not found at {prober_outputs_path}, using original order")
-        prober_data = {}
-    
-    # Calculate average cosine similarities and collect all heads globally
-    total_examples = len(data)
-    
-    # Collect all heads from all layers
     all_heads = []
     
     for layer_info in layer_data:
@@ -204,17 +180,14 @@ def find_refusal_head(
             all_heads.append({
                 "layer_idx": layer_idx_from_name,
                 "head_idx": head_idx,
-                "cosine_similarity": cosine_sim
+                "cosine_similarity": cosine_sim / len(data)
             })
     
     # Sort all heads globally by cosine similarity (ascending order, smallest first)
     all_heads.sort(key=lambda x: x["cosine_similarity"])
-    
-    result_list = all_heads
-    
+
     # Save results to JSON
     with open(save_path, "w") as f:
-        json.dump(result_list, f, indent=4)
+        json.dump(all_heads, f, indent=4)
     
     print(f"Saved refusal head analysis results to {save_path}")
-    print(f"Analyzed {len(layer_data)} layers with {total_examples} examples")

@@ -1,9 +1,8 @@
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM
 import json
-from src.lens.utils import add_scale, batch_gen
+from src.lens.utils import add_scale, batch_gen, batch_probe
 from src.inference.refusal import refusal_words
-from src.model.modeling_llama import add_property, set_thinking_scale_heads
 
 @torch.no_grad()
 def ablating_head_generation(
@@ -11,14 +10,10 @@ def ablating_head_generation(
     json_path: str,
     batch_size: int,
     head_ablation_path: str,
-    head_enhancement_path: str,
     max_new_tokens: int,
     temperature: float,
     do_sample: bool,
     top_n_ablation: int,
-    top_n_enhancement: int,
-    ablation_value: float,
-    enhancement_value: float,
     save_path: str,
     thinking_portion: float,
     item_type: str = "original_item",
@@ -34,12 +29,8 @@ def ablating_head_generation(
 
     with open(head_ablation_path, "r") as f:
         head_ablation_data = json.load(f)[:top_n_ablation]
-    
-    if head_enhancement_path is not None:
-        with open(head_enhancement_path, "r") as f:
-            head_enhancement_data = json.load(f)[-top_n_enhancement:]
-    
-    add_scale(model, head_ablation_data, ablation_value, head_enhancement_data, enhancement_value)
+
+    add_scale(model, head_ablation_data, 0, None, 0)
     
     batch_messages = []
     thinking = []
@@ -49,8 +40,6 @@ def ablating_head_generation(
         thinking.append(item[item_type]["thinking"])
         if thinking_portion < 0.0:
             thinking[-1] = " "
-        elif thinking_portion == 0.0:
-            thinking[-1] = None
         elif thinking_portion > 0.0:
             thinking[-1] = thinking[-1][:int(len(thinking[-1]) * thinking_portion)]
 
@@ -86,20 +75,18 @@ def ablating_head_generation(
     print(f"Total refusals: {count_refusal / len(all_outputs)}")
 
 @torch.no_grad()
-def refusal_direction_generation(
+def ablating_head_prober(
     model_name: str,
     json_path: str,
     batch_size: int,
-    max_new_tokens: int,
-    temperature: float,
-    do_sample: bool,
-    layer_idx: int,
+    head_ablation_path: str,
+    prober_path: str,
+    top_n_ablation: int,
     save_path: str,
-    refusal_direction_path: str,
-    thinking_portion: float,
-    scale: float,
     item_type: str = "original_item",
     truncate_num: int = None,
+    layer_idx: int = 0,
+    thinking_portion: float = 0.0,
 ):
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     model = AutoModelForCausalLM.from_pretrained(
@@ -109,10 +96,12 @@ def refusal_direction_generation(
     with open(json_path, "r") as f:
         data = json.load(f)[:truncate_num] if truncate_num is not None else json.load(f)
 
-    refusal_direction = torch.load(refusal_direction_path)
+    with open(head_ablation_path, "r") as f:
+        head_ablation_data = json.load(f)[:top_n_ablation]
 
-    add_property(model, f"self_attn", "refusal_direction", refusal_direction[layer_idx])
-    add_property(model, f"self_attn", "scale", scale)
+    add_scale(model, head_ablation_data, 0, None, 0)
+    prober = torch.load(prober_path).to(model.device)
+    
     batch_messages = []
     thinking = []
 
@@ -120,21 +109,22 @@ def refusal_direction_generation(
         batch_messages.append([{"role": "user", "content": item["original_item"]["prompt"]}])
         thinking.append(item[item_type]["thinking"])
         if thinking_portion < 0.0:
-            thinking[-1] = ""
+            thinking[-1] = " "
         elif thinking_portion > 0.0:
             thinking[-1] = thinking[-1][:int(len(thinking[-1]) * thinking_portion)]
 
     all_outputs = []
-    outputs = batch_gen(
-        tokenizer=tokenizer, 
-        model=model, 
-        messages=batch_messages, 
+    outputs = batch_probe(
+        tokenizer=tokenizer,
+        model=model,
+        prober=prober,
+        messages=batch_messages,
         thinking=thinking,
         batch_size=batch_size,
-        max_new_tokens=max_new_tokens,
-        temperature=temperature,
-        do_sample=do_sample,
+        position_idx=-1,
+        layer_idx=layer_idx,
     )
+
     for idx, item in enumerate(outputs):
         all_outputs.append(
             {
@@ -150,7 +140,7 @@ def refusal_direction_generation(
     # check how many refusals
     count_refusal = 0
     for item in all_outputs:
-        if any(word in item["response"] for word in refusal_words):
+        if any(word.lower() in item["response"].lower() for word in refusal_words):
             count_refusal += 1
     
     print(f"Total refusals: {count_refusal / len(all_outputs)}")

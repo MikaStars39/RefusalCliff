@@ -6,7 +6,6 @@ from src.lens.prober import (
     collect_non_refusal, 
     extract_hidden_states, 
     train_linear_prober,
-    test_prober_by_layers,
     extract_prober_weights,
 )
 from src.lens.attn_head import (
@@ -14,14 +13,8 @@ from src.lens.attn_head import (
     ablating_attn_head,
     analyze_attn_patterns,
 )
-from src.lens.generation import (
-    ablating_head_generation,
-    refusal_direction_generation,
-)
-from src.lens.refusal import (
-    get_refusal_vector,
-    find_refusal_head,
-)
+from src.lens.generation import ablating_head_generation, ablating_head_prober
+from src.lens.refusal import find_refusal_head
 from src.train.create_data import (
     create_malicious_data,
     mixture_of_thought,
@@ -42,15 +35,13 @@ if __name__ == "__main__":
             "extract_hidden_states": extract_hidden_states,
             "train_prober": train_linear_prober,
             "test_prober": test_prober,
-            "test_prober_by_layers": test_prober_by_layers,
             # attn head
             "trace_attn_head": trace_attn_head,
             "ablating_attn_head": ablating_attn_head,
             "ablating_head_generation": ablating_head_generation,
+            "ablating_head_prober": ablating_head_prober,
             "analyze_attn_patterns": analyze_attn_patterns,
             # refusal vector
-            "get_refusal_vector": get_refusal_vector,
-            "refusal_direction_generation": refusal_direction_generation,
             "find_refusal_head": find_refusal_head,
             "extract_prober_weights": extract_prober_weights,
             # utils

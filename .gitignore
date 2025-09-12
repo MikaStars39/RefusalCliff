@@ -6,4 +6,4 @@ cache/*
 data/*
 .gradio
 *.pyc
-*/__pycache__/*
+__pycache__/*

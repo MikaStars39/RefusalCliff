@@ -38,67 +38,6 @@ from transformers.models.qwen2.modeling_qwen2 import (
 
 logger = logging.get_logger(__name__)
 
-def pasta_attention_steering(attention_logits, heads_to_steer, emphasized_token_indices, alpha=0.01):
-    """
-    Modify attention logits for specific heads in a batch, following the PASTA method.
-
-    Args:
-        attention_logits (torch.Tensor): Raw attention logits (before softmax),
-            shape (batch_size, num_heads, query_seq_len, key_seq_len).
-        heads_to_steer (list or int): Index or indices of heads to steer.
-        emphasized_token_indices (list): Indices of tokens in the key sequence to emphasize.
-        alpha (float): Scaling factor for non-emphasized tokens.
-
-    Returns:
-        torch.Tensor: Modified attention logits tensor.
-    """
-    if attention_logits.dim() != 4:
-        raise ValueError("Input tensor must be 4D (batch_size, num_heads, query_seq_len, key_seq_len).")
-
-    # Ensure alpha is not too small to avoid completely zeroing out attention
-    alpha = max(alpha, 0.01)  # Minimum alpha to preserve some attention
-    
-    # Ensure heads_to_steer is a list
-    if isinstance(heads_to_steer, int):
-        heads_to_steer = [heads_to_steer]
-
-    # Validate head indices
-    num_heads = attention_logits.shape[1]
-    heads_to_steer = [h for h in heads_to_steer if 0 <= h < num_heads]
-    if not heads_to_steer:
-        return attention_logits  # No valid heads to steer
-
-    # Clone logits to avoid in-place modification
-    steered_logits = attention_logits.clone()
-
-    # Create scaling factors: 1.0 for emphasized tokens, alpha for others
-    key_seq_len = attention_logits.shape[-1]
-    device = attention_logits.device
-
-    scaling_factors = torch.full((key_seq_len,), alpha, device=device, dtype=steered_logits.dtype)
-    
-    # Ensure emphasized_token_indices are within bounds
-    if isinstance(emphasized_token_indices, torch.Tensor):
-        valid_indices = emphasized_token_indices[emphasized_token_indices < key_seq_len]
-    else:
-        valid_indices = torch.tensor([idx for idx in emphasized_token_indices if 0 <= idx < key_seq_len], device=device)
-    
-    # Only proceed if we have valid indices to emphasize
-    if len(valid_indices) > 0:
-        scaling_factors.scatter_(0, valid_indices, 1.0)
-
-        # Select logits for the target heads
-        target_logits = steered_logits[:, heads_to_steer, :, :]
-
-        # Apply scaling factors (broadcasting over the last dimension)
-        steered_target_logits = target_logits + scaling_factors
-
-        # Put the modified logits back
-        steered_logits[:, heads_to_steer, :, :] = steered_target_logits
-
-    return steered_logits
-
-
 def eager_attention_forward(
     module: nn.Module,
     query: torch.Tensor,
@@ -230,12 +169,12 @@ class Qwen2Attention(nn.Module):
         if hasattr(self, "refusal_head"):
             all_outputs = []
             for head_idx in range(attn_output.shape[2]):
-                zero_tensor = torch.zeros_like(attn_output)
+                zero_tensor = torch.zeros_like(attn_output).to(attn_output.device)
                 zero_tensor[:, :, head_idx, :] = attn_output[:, :, head_idx, :]
                 zero_tensor = self.o_proj(zero_tensor.reshape(*input_shape, -1).contiguous()[:, -1, :]).mean(dim=0)
-                refusal_vector = self.refusal_head["refusal_vector"]
+                refusal_vector = self.refusal_head["refusal_vector"].to(zero_tensor.device).to(zero_tensor.dtype)
                 # rescale zero vector and refusal_vector to the same norm
-                score = torch.dot(zero_tensor.cpu(), refusal_vector.to(zero_tensor.dtype)) / (refusal_vector.to(zero_tensor.dtype).norm().item())
+                score = torch.dot(zero_tensor, refusal_vector) / (refusal_vector.norm()).cpu()
                 all_outputs.append(score.item())
                 
             if len(self.refusal_head["all_outputs"]) == 0:
