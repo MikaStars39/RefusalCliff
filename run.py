@@ -1,6 +1,5 @@
-from src.inference.gen import api_inference
-from src.inference.bench import process_data
-from src.inference.utils import split_thinking_response
+from src.inference.generation import api_inference
+from src.inference.utils import split_thinking_response, process_data
 from src.lens.prober import (
     test_prober, 
     collect_refusal, 
@@ -15,7 +14,7 @@ from src.lens.attn_head import (
     ablating_attn_head,
     analyze_attn_patterns,
 )
-from src.lens.gen import (
+from src.lens.generation import (
     ablating_head_generation,
     refusal_direction_generation,
 )
