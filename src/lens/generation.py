@@ -3,6 +3,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 import json
 from src.lens.utils import add_scale, batch_gen, batch_probe
 from src.inference.refusal import refusal_words
+from src.lens.prober import LinearProber
 
 @torch.no_grad()
 def ablating_head_generation(
@@ -57,9 +58,11 @@ def ablating_head_generation(
     for idx, item in enumerate(outputs):
         all_outputs.append(
             {
-                "prompt": data[idx]["original_item"]["prompt"],
-                "thinking": data[idx]["original_item"]["thinking"],
-                "response": item,
+                "original_item": {
+                    "prompt": data[idx]["original_item"]["prompt"],
+                    "thinking": data[idx]["original_item"]["thinking"],
+                    "response": item,
+                }
             }
         )
     
@@ -82,7 +85,6 @@ def ablating_head_prober(
     head_ablation_path: str,
     prober_path: str,
     top_n_ablation: int,
-    save_path: str,
     item_type: str = "original_item",
     truncate_num: int = None,
     layer_idx: int = 0,
@@ -100,8 +102,11 @@ def ablating_head_prober(
         head_ablation_data = json.load(f)[:top_n_ablation]
 
     add_scale(model, head_ablation_data, 0, None, 0)
-    prober = torch.load(prober_path).to(model.device)
-    
+
+    prober = LinearProber(model.config.hidden_size, 1024).to(model.device)
+    prober.load_state_dict(torch.load(prober_path, map_location=model.device)["state_dict"])
+    prober.eval()
+
     batch_messages = []
     thinking = []
 
@@ -125,22 +130,4 @@ def ablating_head_prober(
         layer_idx=layer_idx,
     )
 
-    for idx, item in enumerate(outputs):
-        all_outputs.append(
-            {
-                "prompt": data[idx]["original_item"]["prompt"],
-                "thinking": data[idx]["original_item"]["thinking"],
-                "response": item,
-            }
-        )
-    
-    with open(save_path, "w") as f:
-        json.dump(all_outputs, f, indent=4)
-    
-    # check how many refusals
-    count_refusal = 0
-    for item in all_outputs:
-        if any(word.lower() in item["response"].lower() for word in refusal_words):
-            count_refusal += 1
-    
-    print(f"Total refusals: {count_refusal / len(all_outputs)}")
+    print(f"Probing result: {outputs}")

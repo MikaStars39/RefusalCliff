@@ -77,6 +77,7 @@ def add_scale(
     enable_appropriate_monkey_patch(model)
     
     total = {}
+    value = {}
     for idx in range(len(head_ablation_data)):
         layer_idx = head_ablation_data[idx]["layer_idx"]
         head_idx = head_ablation_data[idx]["head_idx"]
@@ -84,17 +85,18 @@ def add_scale(
             total[layer_idx] = [head_idx]
         else:
             total[layer_idx].append(head_idx)
-    add_property(model, "self_attn", "scale", {"heads": total, "values": ablation_value})
+        if value.get(layer_idx, None) is None:
+            value[layer_idx] = {}
+        value[layer_idx][head_idx] = ablation_value
+    
     if head_enhancement_data is not None:
-        total = {}
         for idx in range(len(head_enhancement_data)):
             layer_idx = head_enhancement_data[idx]["layer_idx"]
             head_idx = head_enhancement_data[idx]["head_idx"]
-            if total.get(layer_idx, None) is None:
-                total[layer_idx] = [head_idx]
-            else:
-                total[layer_idx].append(head_idx)
-        add_property(model, "self_attn", "enhance_scale", {"heads": total, "values": enhancement_value})
+            if value.get(layer_idx, None) is None:
+                value[layer_idx] = {}
+            value[layer_idx][head_idx] = enhancement_value
+    add_property(model, "self_attn", "scale", {"heads": total, "values": value})
 
 @torch.no_grad()
 def batch_get_hidden_states(
@@ -169,10 +171,10 @@ def batch_probe(
         hidden_states = outputs.hidden_states[layer_idx]
         
         # Extract only the needed hidden states and convert immediately
-        selected_hidden_states = hidden_states[:, position_idx, :].squeeze(0).to(torch.float32)
+        selected_hidden_states = hidden_states[:, position_idx, :].to(torch.float32)
         
         # Run prober and get result immediately
-        prober_output = torch.sigmoid(prober(selected_hidden_states)).cpu().sum().item()
+        prober_output = torch.sigmoid(prober(selected_hidden_states)).sum(dim=0).cpu().item()
         total_prober_output += prober_output
     
     return total_prober_output / len(messages)

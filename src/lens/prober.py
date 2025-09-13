@@ -4,9 +4,11 @@ import os
 from tqdm import tqdm
 from transformers import AutoModelForCausalLM, AutoTokenizer
 import json
+import random
 
 from torch.utils.data import TensorDataset, DataLoader
 from src.inference.refusal import refusal_words
+from src.lens.utils import add_scale
 
 def collect_refusal(
     json_path: str,
@@ -86,17 +88,14 @@ def extract_hidden_states(
 
         hidden_states_between_think = outputs.hidden_states
 
-        if layer_index is None:
-            chosen_layer = model.config.num_hidden_layers * 2 // 3
-        else:
-            chosen_layer = int(layer_index)
+        chosen_layer = int(layer_index)
 
         layer_h = hidden_states_between_think[chosen_layer].to(torch.float32)
         seq_len = layer_h.shape[1]
         if seq_len == 0:
             print(f"skip idx={idx} empty thinking span")
             continue
-
+        
         feat = layer_h[:, -1, :].squeeze(0)
 
         # check if nan in feat
@@ -128,6 +127,9 @@ def test_prober(
     max_items: int = None,
     thinking_portion: float = 0.0,
     item_type: str = "original,safe_item",
+    head_ablation_path: str = None,
+    top_n_ablation: int = None,
+    enhance: bool = False,
 ):
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -155,7 +157,16 @@ def test_prober(
     tokenizer = AutoTokenizer.from_pretrained(model_path)
     with open(json_path, "r") as f:
         jbbench_distill_llama_8b = json.load(f)
-
+    
+    if head_ablation_path is not None:
+        with open(head_ablation_path, "r") as f:
+            head_ablation_data = json.load(f)[:top_n_ablation]
+            if enhance:
+                head_enhancement_data = head_ablation_data
+            else:
+                head_enhancement_data = None
+            
+        add_scale(model, head_ablation_data, 0, head_enhancement_data, 4)
     # Process each item_type separately
     all_results = {}
     max_seq_len_global = 0

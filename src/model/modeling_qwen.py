@@ -78,10 +78,12 @@ def eager_attention_forward(
     attn_output = torch.matmul(attn_weights, value_states)
     attn_output_o = attn_output.transpose(1, 2).contiguous()
     attn_output_o = attn_output_o.reshape(*input_shape, -1).contiguous()
+    attn_output_o_norm = attn_output_o.norm()
 
     if scale is not None:
-        attn_output[:, scale["heads"], :, :] = attn_output[:, scale["heads"], :, :] * 1e-3
-    attn_output = attn_output / attn_output.norm() * attn_output_o.norm()
+        for head_idx in scale["heads"]:
+            attn_output[:, head_idx, :, :] = attn_output[:, head_idx, :, :] * scale["values"][module.layer_idx][head_idx]
+        attn_output = attn_output / (attn_output.norm() / attn_output_o_norm)
 
     return attn_output, attn_weights
 
