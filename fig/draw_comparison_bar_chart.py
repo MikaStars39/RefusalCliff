@@ -11,8 +11,8 @@ plt.style.use(['science', 'no-latex', 'retro'])
 
 # Override specific settings to maintain our preferences
 plt.rcParams.update({
-    'font.family': 'monospace',
-    'font.monospace': ['Consolas', 'DejaVu Sans Mono', 'Courier New', 'monospace'],
+    'font.family': 'sans-serif',
+    'font.sans-serif': ['Helvetica', 'Arial', 'DejaVu Sans', 'Liberation Sans', 'sans-serif'],
     'font.size': 8,
     'axes.titlesize': 16,
     'axes.labelsize': 14,
@@ -153,7 +153,7 @@ def plot_comparison_bar_chart(
     # Configure plot
     ax.set_xlabel(xlabel, fontsize=12, fontweight='normal', color='#333333')
     ax.set_ylabel(ylabel, fontsize=12, fontweight='normal', color='#333333')
-    ax.set_title(title, fontsize=14, fontweight='normal', color='#333333', pad=20)
+    ax.set_title(title, fontsize=14, fontweight='bold', color='#333333', pad=20)
     
     # Set x-axis labels
     ax.set_xticks(x_pos)

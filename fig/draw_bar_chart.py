@@ -11,8 +11,8 @@ plt.style.use(['science', 'no-latex', 'retro'])
 
 # Override specific settings to maintain our preferences
 plt.rcParams.update({
-    'font.family': 'monospace',
-    'font.monospace': ['Consolas', 'DejaVu Sans Mono', 'Courier New', 'monospace'],
+    'font.family': 'sans-serif',
+    'font.sans-serif': ['Helvetica', 'Arial', 'DejaVu Sans', 'Liberation Sans', 'sans-serif'],
     'font.size': 8,
     'axes.titlesize': 16,
     'axes.labelsize': 14,
@@ -107,7 +107,8 @@ def plot_bar_chart_from_dict(
                    fontweight='normal',
                    zorder=5)
     
-    # Configure plot with programmer styling - remove title and x-axis label
+    # Configure plot with programmer styling
+    ax.set_title(title, fontsize=14, fontweight='bold', color='#333333', pad=15)
     ax.set_ylabel("Attack Successful Rate", fontsize=12, fontweight='normal', color='#333333')
     
     # Set x-axis labels
