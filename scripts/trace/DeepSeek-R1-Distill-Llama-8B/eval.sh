@@ -1,0 +1,13 @@
+python3 run.py api_inference \
+    --json_file="outputs/refusal/DeepSeek-R1-Distill-Qwen-7B/jbbench.json" \
+    --output_file="outputs/refusal/DeepSeek-R1-Distill-Qwen-7B/jbbench.json" \
+    --base_url="http://0.0.0.0:8001/v1" \
+    --api_key="123" \
+    --model="/diancpfs/user/qingyu/Llama-Guard-3-8B" \
+    --max_tokens=16 \
+    --temperature=0.7 \
+    --request_time=0.0 \
+    --truncated_num=256 \
+    --max_concurrent=1000 \
+    --generation_mode "eval" \
+    --max_retries=5

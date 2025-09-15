@@ -7,34 +7,31 @@ import numpy as np
 import fire
 from matplotlib.colors import TwoSlopeNorm
 
-# Set matplotlib style to match programmer aesthetics
-plt.style.use('default')  # Reset to default first
+# Set matplotlib style to use scienceplots retro
+import scienceplots
+plt.style.use(['science', 'no-latex', 'retro'])
+
+# Override specific settings to maintain our preferences
 plt.rcParams.update({
-    'font.family': 'monospace',
-    'font.monospace': ['Consolas', 'DejaVu Sans Mono', 'Courier New', 'monospace'],
+    'font.family': 'sans-serif',
+    'font.sans-serif': ['Helvetica', 'Arial', 'DejaVu Sans', 'Liberation Sans', 'sans-serif'],
     'font.size': 12,
     'axes.titlesize': 16,
     'axes.labelsize': 14,
-    'xtick.labelsize': 12,
+    'xtick.labelsize': 7,  # Smaller for x-axis labels
     'ytick.labelsize': 12,
     'legend.fontsize': 10,
     'figure.titlesize': 18,
-    'axes.linewidth': 0.8,
-    'grid.linewidth': 0.5,
-    'lines.linewidth': 2.0,
-    'axes.spines.top': False,
-    'axes.spines.right': False,
     'axes.facecolor': '#f8f8f8',  # Light gray background for plot area
     'figure.facecolor': 'white',  # White background for figure
     'savefig.facecolor': 'white',
     'savefig.edgecolor': 'none',
-    'grid.alpha': 0.4,
-    'axes.edgecolor': '#cccccc',  # Light gray for axes
-    'xtick.color': '#666666',  # Light gray for tick labels
-    'ytick.color': '#666666',
-    'text.color': '#333333',  # Dark gray for text
-    'axes.labelcolor': '#333333',
-    'text.usetex': False,
+    'axes.spines.top': True,  # Show top spine
+    'axes.spines.right': True,  # Show right spine
+    'xtick.direction': 'out',  # Ticks point outward
+    'ytick.direction': 'out',  # Ticks point outward
+    'xtick.minor.visible': False,  # Hide minor x ticks
+    'ytick.minor.visible': False,  # Hide minor y ticks
 })
 
 def plot_attention_heatmap(
@@ -47,6 +44,7 @@ def plot_attention_heatmap(
     vmin: Optional[float] = None,
     vmax: Optional[float] = None,
     center_zero: bool = True,  # Whether to center colormap on zero
+    title: str = "Attention Head Heatmap",
 ) -> None:
     """
     Plot attention head heatmap with academic style matching the programmer aesthetic.
@@ -61,6 +59,7 @@ def plot_attention_heatmap(
         vmin: Minimum value for colormap normalization
         vmax: Maximum value for colormap normalization
         center_zero: Whether to center the colormap on zero (makes 0 white)
+        title: Plot title
     """
     # Load data from JSON file
     with open(data_path, "r") as f:
@@ -126,8 +125,9 @@ def plot_attention_heatmap(
                    interpolation='nearest')
     
     # Configure axes
-    ax.set_xlabel('Head Index', fontsize=16, fontweight='normal', color='#333333')
-    ax.set_ylabel('Layer Index', fontsize=16, fontweight='normal', color='#333333')
+    ax.set_xlabel('Head Index', fontsize=10, fontweight='normal', color='#333333')
+    ax.set_ylabel('Layer Index', fontsize=10, fontweight='normal', color='#333333')
+    ax.set_title(title, fontsize=12, fontweight='bold', color='#333333', pad=10)
     
     # Set ticks
     x_ticks = np.arange(0, n_heads, max(1, n_heads // 10))  # Show at most 10 x-ticks
@@ -139,7 +139,9 @@ def plot_attention_heatmap(
     ax.set_yticklabels([str(min_layer + tick) for tick in y_ticks])
     
     # Customize ticks with light colors
-    ax.tick_params(axis='both', which='major', labelsize=12, width=0.8, 
+    ax.tick_params(axis='x', which='major', labelsize=7, width=0.8, 
+                   color='#cccccc', labelcolor='#666666')
+    ax.tick_params(axis='y', which='major', labelsize=10, width=0.8, 
                    color='#cccccc', labelcolor='#666666')
     
     # Add values to cells if requested
@@ -158,7 +160,7 @@ def plot_attention_heatmap(
     
     # Add colorbar
     cbar = plt.colorbar(im, ax=ax, shrink=0.8, aspect=30)
-    cbar.ax.tick_params(labelsize=12, width=0.8, color='#cccccc', labelcolor='#666666')
+    cbar.ax.tick_params(labelsize=8, width=0.8, color='#cccccc', labelcolor='#666666')
     
     # Set light colored spines for colorbar
     cbar.outline.set_color('#cccccc')
@@ -196,6 +198,7 @@ def plot_attention_heatmap_filtered(
     vmin: Optional[float] = None,
     vmax: Optional[float] = None,
     center_zero: bool = True,  # Whether to center colormap on zero
+    title: Optional[str] = None,  # Custom title, if None will generate automatically
 ) -> None:
     """
     Plot filtered attention head heatmap showing only values meeting threshold criteria.
@@ -212,6 +215,7 @@ def plot_attention_heatmap_filtered(
         vmin: Minimum value for colormap normalization
         vmax: Maximum value for colormap normalization
         center_zero: Whether to center the colormap on zero (makes 0 white)
+        title: Custom title, if None will generate automatically based on threshold
     """
     # Load data from JSON file
     with open(data_path, "r") as f:
@@ -286,12 +290,13 @@ def plot_attention_heatmap_filtered(
                    interpolation='nearest')
     
     # Configure axes
-    ax.set_xlabel('Head Index', fontsize=12, fontweight='normal', color='#333333')
-    ax.set_ylabel('Layer Index', fontsize=12, fontweight='normal', color='#333333')
+    ax.set_xlabel('Head Index', fontsize=10, fontweight='normal', color='#333333')
+    ax.set_ylabel('Layer Index', fontsize=10, fontweight='normal', color='#333333')
     
-    threshold_text = f" ({threshold_mode} {threshold})" if threshold is not None else ""
-    ax.set_title(f'Filtered Attention Head {value_key.replace("_", " ").title()} Heatmap{threshold_text}', 
-                fontsize=18, fontweight='normal', color='#333333', pad=20)
+    if title is None:
+        threshold_text = f" ({threshold_mode} {threshold})" if threshold is not None else ""
+        title = f'Filtered Attention Head {value_key.replace("_", " ").title()} Heatmap{threshold_text}'
+    ax.set_title(title, fontsize=12, fontweight='bold', color='#333333', pad=10)
     
     # Set ticks to show full range even if filtered
     x_ticks = np.arange(0, n_heads, max(1, n_heads // 10))
@@ -303,7 +308,9 @@ def plot_attention_heatmap_filtered(
     ax.set_yticklabels([str(min_layer + tick) for tick in y_ticks])
     
     # Customize ticks
-    ax.tick_params(axis='both', which='major', labelsize=12, width=0.8, 
+    ax.tick_params(axis='x', which='major', labelsize=7, width=0.8, 
+                   color='#cccccc', labelcolor='#666666')
+    ax.tick_params(axis='y', which='major', labelsize=10, width=0.8, 
                    color='#cccccc', labelcolor='#666666')
     
     # Add values to cells if requested
@@ -322,7 +329,7 @@ def plot_attention_heatmap_filtered(
     
     # Add colorbar
     cbar = plt.colorbar(im, ax=ax, shrink=0.8, aspect=30)
-    cbar.ax.tick_params(labelsize=12, width=0.8, color='#cccccc', labelcolor='#666666')
+    cbar.ax.tick_params(labelsize=8, width=0.8, color='#cccccc', labelcolor='#666666')
     cbar.outline.set_color('#cccccc')
     cbar.outline.set_linewidth(0.8)
     
@@ -359,6 +366,7 @@ class AttentionHeatmapCLI:
         vmin: float = None,
         vmax: float = None,
         center_zero: bool = True,
+        title: str = "Attention Head Heatmap",
     ):
         """
         Plot attention head heatmap.
@@ -374,6 +382,7 @@ class AttentionHeatmapCLI:
             vmin: Minimum value for colormap (optional)
             vmax: Maximum value for colormap (optional)
             center_zero: Center colormap on zero to make 0 white (default: True)
+            title: Plot title (default: Attention Head Heatmap)
         """
         plot_attention_heatmap(
             data_path=data_path,
@@ -385,6 +394,7 @@ class AttentionHeatmapCLI:
             vmin=vmin,
             vmax=vmax,
             center_zero=center_zero,
+            title=title,
         )
     
     def plot_filtered(
@@ -401,6 +411,7 @@ class AttentionHeatmapCLI:
         vmin: float = None,
         vmax: float = None,
         center_zero: bool = True,
+        title: str = None,
     ):
         """
         Plot filtered attention head heatmap.
@@ -418,6 +429,7 @@ class AttentionHeatmapCLI:
             vmin: Minimum value for colormap (optional)
             vmax: Maximum value for colormap (optional)
             center_zero: Center colormap on zero to make 0 white (default: True)
+            title: Custom title, if None will generate automatically (optional)
         """
         plot_attention_heatmap_filtered(
             data_path=data_path,
@@ -431,6 +443,7 @@ class AttentionHeatmapCLI:
             vmin=vmin,
             vmax=vmax,
             center_zero=center_zero,
+            title=title,
         )
     
     def batch_plot(

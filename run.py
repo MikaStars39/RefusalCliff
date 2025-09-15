@@ -20,7 +20,7 @@ from src.train.create_data import (
     mixture_of_thought,
     merge_then_mix,
 )
-from src.inference.refusal import count_refusal
+from src.inference.refusal import count_refusal, count_safety
 import fire
 
 if __name__ == "__main__":
@@ -52,5 +52,6 @@ if __name__ == "__main__":
             "merge_then_mix": merge_then_mix,
             # count refusal
             "count_refusal": count_refusal,
+            "count_safety": count_safety,
         }
     )
