@@ -71,9 +71,6 @@ def plot_multiple_prober_results(
     fig.patch.set_facecolor('white')  # White background for figure
     ax.set_facecolor('#f8f8f8')  # Light gray background for plot area
     
-    # Create x-axis (assuming normalized to 100 points)
-    x_axis = np.arange(100)
-    
     for i, (pt_path, label) in enumerate(zip(pt_file_paths, labels)):
         if not os.path.exists(pt_path):
             print(f"Warning: File not found - {pt_path}")
@@ -90,12 +87,21 @@ def plot_multiple_prober_results(
                     color_idx = (i * len(results) + j) % len(colors)
                     base_color = colors[color_idx]
                     
-                    # Plot the entire line with consistent color
-                    ax.plot(x_axis, result_tensor.numpy(), 
+                    # Sample points every 5 positions, plus position 99
+                    sample_positions = np.concatenate([np.arange(0, 100, 5), [99]])  # 0, 5, 10, 15, ..., 95, 99
+                    sample_values = result_tensor[sample_positions].numpy()
+                    
+                    # Plot only the sampled points connected directly
+                    ax.plot(sample_positions, sample_values, 
                            label=f"{label}", 
                            color=base_color, 
                            linewidth=linewidth,
                            alpha=0.8)  # Consistent alpha for entire line
+                    
+                    # Add circular markers at sampled positions
+                    ax.scatter(sample_positions, sample_values,
+                             facecolor=base_color, edgecolor='black', s=25, 
+                             linewidth=0.8, zorder=6, alpha=0.9)
                            
             elif isinstance(results, torch.Tensor):
                 # Single tensor result
@@ -103,12 +109,21 @@ def plot_multiple_prober_results(
                     # 1D tensor with 100 points
                     color = colors[i % len(colors)]
                     
-                    # Plot the entire line with consistent color
-                    ax.plot(x_axis, results.numpy(), 
+                    # Sample points every 5 positions, plus position 99
+                    sample_positions = np.concatenate([np.arange(0, 100, 5), [99]])  # 0, 5, 10, 15, ..., 95, 99
+                    sample_values = results[sample_positions].numpy()
+                    
+                    # Plot only the sampled points connected directly
+                    ax.plot(sample_positions, sample_values, 
                            label=label, 
                            color=color, 
                            linewidth=linewidth,
                            alpha=0.8)  # Consistent alpha for entire line
+                    
+                    # Add circular markers at sampled positions
+                    ax.scatter(sample_positions, sample_values,
+                             facecolor=color, edgecolor='black', s=25, 
+                             linewidth=0.8, zorder=6, alpha=0.9)
                            
                 elif results.dim() == 2:
                     # 2D tensor (multiple sequences or layer results)
@@ -118,12 +133,21 @@ def plot_multiple_prober_results(
                             color_idx = (i + j) % len(colors)
                             base_color = colors[color_idx]
                             
-                            # Plot the entire line with consistent color
-                            ax.plot(x_axis, seq.numpy(), 
+                            # Sample points every 5 positions, plus position 99
+                            sample_positions = np.concatenate([np.arange(0, 100, 5), [99]])  # 0, 5, 10, 15, ..., 95, 99
+                            sample_values = seq[sample_positions].numpy()
+                            
+                            # Plot only the sampled points connected directly
+                            ax.plot(sample_positions, sample_values, 
                                    label=f"{label}", 
                                    color=base_color, 
                                    linewidth=linewidth,
                                    alpha=0.8)  # Consistent alpha for entire line
+                            
+                            # Add circular markers at sampled positions
+                            ax.scatter(sample_positions, sample_values,
+                                     facecolor=base_color, edgecolor='black', s=25, 
+                                     linewidth=0.8, zorder=6, alpha=0.9)
                     else:
                         print(f"Warning: Unexpected tensor shape {results.shape} in {pt_path}")
                 else:
@@ -147,34 +171,7 @@ def plot_multiple_prober_results(
     ax.set_xlim(-5, 105)  # Start from -5 for better spacing
     ax.set_ylim(-0.1, 0.85)
     
-    # Add large dots for the last point (position 99, index 99) for each plotted line
-    for i, (pt_path, label) in enumerate(zip(pt_file_paths, labels)):
-        if not os.path.exists(pt_path):
-            continue
-            
-        try:
-            # Load the .pt file
-            results = torch.load(pt_path, map_location='cpu')
-            
-            # Handle different result formats to get the last point
-            if isinstance(results, dict):
-                for j, (item_type, result_tensor) in enumerate(results.items()):
-                    color_idx = (i * len(results) + j) % len(colors)
-                    if len(result_tensor) >= 100:
-                        ax.scatter(99, result_tensor[99].item(), 
-                                 color=colors[color_idx], s=20, zorder=5, alpha=0.9)
-            elif isinstance(results, torch.Tensor):
-                if results.dim() == 1 and len(results) >= 100:
-                    color = colors[i % len(colors)]
-                    ax.scatter(99, results[99].item(), 
-                             color=color, s=20, zorder=5, alpha=0.9)
-                elif results.dim() == 2 and results.shape[1] >= 100:
-                    for j, seq in enumerate(results):
-                        color_idx = (i + j) % len(colors)
-                        ax.scatter(99, seq[99].item(), 
-                                 color=colors[color_idx], s=20, zorder=5, alpha=0.9)
-        except Exception as e:
-            continue
+
     
     # Customize ticks with light colors
     ax.tick_params(axis='both', which='major', labelsize=10, width=0.8, 
@@ -193,7 +190,7 @@ def plot_multiple_prober_results(
         facecolor='#e8e8e8',  # Darker gray background
         framealpha=0.95,
         fontsize=8,
-        loc=(0.05, 0.70),  # Position further down from top-left corner
+        loc=(0.05, 0.60),  # Position further down from top-left corner
         borderpad=1.0,  # Increase padding between text and legend border
         handletextpad=0.8,  # Space between legend markers and text
         columnspacing=1.0  # Space between columns if multiple

@@ -35,9 +35,9 @@ def enable_appropriate_monkey_patch(model, model_name_or_path: str = None):
     else:
         # Try to detect from model config
         config_name = model.config.__class__.__name__.lower()
-        if 'llama' in config_name or 'deepseek' in config_name:
+        if 'llama' in config_name.lower():
             model_type = 'llama'
-        elif 'qwen' in config_name:
+        elif 'qwen' in config_name.lower() or "Skywork-OR1-7B" in config_name or "QwQ" in config_name:
             model_type = 'qwen'
         else:
             model_type = 'unknown'

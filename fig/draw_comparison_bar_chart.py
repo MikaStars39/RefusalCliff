@@ -13,10 +13,10 @@ plt.style.use(['science', 'no-latex', 'retro'])
 plt.rcParams.update({
     'font.family': 'sans-serif',
     'font.sans-serif': ['Helvetica', 'Arial', 'DejaVu Sans', 'Liberation Sans', 'sans-serif'],
-    'font.size': 8,
+    'font.size': 12,
     'axes.titlesize': 16,
     'axes.labelsize': 14,
-    'xtick.labelsize': 8,  # Smaller x-axis tick labels
+    'xtick.labelsize': 12,
     'ytick.labelsize': 12,
     'legend.fontsize': 10,
     'figure.titlesize': 18,
@@ -24,8 +24,8 @@ plt.rcParams.update({
     'figure.facecolor': 'white',  # White background for figure
     'savefig.facecolor': 'white',
     'savefig.edgecolor': 'none',
-    'axes.spines.top': False,  # Remove top spine
-    'axes.spines.right': False,  # Remove right spine
+    'axes.spines.top': True,  # Show top spine
+    'axes.spines.right': True,  # Show right spine
     'xtick.direction': 'out',  # Ticks point outward
     'ytick.direction': 'out',  # Ticks point outward
     'xtick.minor.visible': False,  # Hide minor x ticks
@@ -135,11 +135,17 @@ def plot_comparison_bar_chart(
     # Add improvement percentage labels above right bars
     if show_improvement:
         for i, (bar_after, before_val, after_val) in enumerate(zip(bars_after, before_values, after_values)):
-            improvement = abs(after_val - before_val)
-            if before_val < 1:  # Assume percentage values
-                improvement_text = f'+{improvement*100:.1f}%'
+            improvement = after_val - before_val
+            if improvement > 0:
+                if before_val < 1:  # Assume percentage values
+                    improvement_text = f'+{improvement*100:.1f}%'
+                else:
+                    improvement_text = f'+{improvement:.1f}'
             else:
-                improvement_text = f'+{improvement:.1f}'
+                if before_val < 1:  # Assume percentage values
+                    improvement_text = f'-{improvement*100:.1f}%'
+                else:
+                    improvement_text = f'-{improvement:.1f}'
             
             height_after = bar_after.get_height()
             ax.text(bar_after.get_x() + bar_after.get_width()/2., 
@@ -151,9 +157,9 @@ def plot_comparison_bar_chart(
                    zorder=5)
     
     # Configure plot
-    ax.set_xlabel(xlabel, fontsize=12, fontweight='normal', color='#333333')
-    ax.set_ylabel(ylabel, fontsize=12, fontweight='normal', color='#333333')
-    ax.set_title(title, fontsize=14, fontweight='bold', color='#333333', pad=20)
+    ax.set_xlabel(xlabel, fontsize=10, fontweight='normal', color='#333333')
+    ax.set_ylabel(ylabel, fontsize=10, fontweight='normal', color='#333333')
+    ax.set_title(title, fontsize=12, fontweight='bold', color='#333333', pad=10)
     
     # Set x-axis labels
     ax.set_xticks(x_pos)
@@ -186,16 +192,18 @@ def plot_comparison_bar_chart(
     legend.get_frame().set_linewidth(0.8)
     
     # Customize ticks with light colors
-    ax.tick_params(axis='x', which='major', labelsize=10, width=0.8, 
-                   color='#cccccc', labelcolor='#666666')
-    ax.tick_params(axis='y', which='major', labelsize=12, width=0.8, 
+    ax.tick_params(axis='both', which='major', labelsize=10, width=0.8, 
                    color='#cccccc', labelcolor='#666666')
     
-    # Set light colored spines
+    # Set light colored spines for all four sides
     ax.spines['left'].set_color('#cccccc')
     ax.spines['bottom'].set_color('#cccccc')
+    ax.spines['top'].set_color('#cccccc')
+    ax.spines['right'].set_color('#cccccc')
     ax.spines['left'].set_linewidth(0.8)
     ax.spines['bottom'].set_linewidth(0.8)
+    ax.spines['top'].set_linewidth(0.8)
+    ax.spines['right'].set_linewidth(0.8)
     
     # Adjust layout
     plt.tight_layout()
@@ -264,6 +272,6 @@ if __name__ == "__main__":
         data=data,
         save_path="outputs/fig/model_comparison_improvement.pdf",
         title="Head Ablation",
-        ylabel="Attack Success Rate",
-        figsize=(5/4*5, 5)
+        ylabel="Refusal Score",
+        figsize=(5, 4.5)
     )

@@ -13,10 +13,10 @@ plt.style.use(['science', 'no-latex', 'retro'])
 plt.rcParams.update({
     'font.family': 'sans-serif',
     'font.sans-serif': ['Helvetica', 'Arial', 'DejaVu Sans', 'Liberation Sans', 'sans-serif'],
-    'font.size': 8,
+    'font.size': 12,
     'axes.titlesize': 16,
     'axes.labelsize': 14,
-    'xtick.labelsize': 8,  # Smaller x-axis tick labels
+    'xtick.labelsize': 7,
     'ytick.labelsize': 12,
     'legend.fontsize': 10,
     'figure.titlesize': 18,
@@ -24,8 +24,8 @@ plt.rcParams.update({
     'figure.facecolor': 'white',  # White background for figure
     'savefig.facecolor': 'white',
     'savefig.edgecolor': 'none',
-    'axes.spines.top': False,  # Remove top spine
-    'axes.spines.right': False,  # Remove right spine
+    'axes.spines.top': True,  # Show top spine
+    'axes.spines.right': True,  # Show right spine
     'xtick.direction': 'out',  # Ticks point outward
     'ytick.direction': 'out',  # Ticks point outward
     'xtick.minor.visible': False,  # Hide minor x ticks
@@ -103,19 +103,18 @@ def plot_bar_chart_from_dict(
             ax.text(bar.get_x() + bar.get_width()/2., height + 0.02,
                    f'{value*100:.1f}%',  # Convert to percentage format
                    ha='center', va='bottom',
-                   fontsize=10, color='#333333',
+                   fontsize=8, color='#333333',
                    fontweight='normal',
                    zorder=5)
     
     # Configure plot with programmer styling
-    ax.set_title(title, fontsize=14, fontweight='bold', color='#333333', pad=15)
-    ax.set_ylabel("Attack Successful Rate", fontsize=12, fontweight='normal', color='#333333')
+    ax.set_title(title, fontsize=12, fontweight='bold', color='#333333', pad=10)
+    ax.set_ylabel("Attack Successful Rate", fontsize=10, fontweight='normal', color='#333333')
     
     # Set x-axis labels
     ax.set_xticks(x_pos)
     ax.set_xticklabels(labels, rotation=20 if len(max(labels, key=len)) > 8 else 0, 
-                       ha='right' if len(max(labels, key=len)) > 8 else 'center',
-                       fontsize=8)  # Even smaller font size for x-axis labels
+                       ha='right' if len(max(labels, key=len)) > 8 else 'center')  # Font size controlled by rcParams
     
     # Set y-axis limits to 0-100% (0.0-1.0 in decimal)
     ax.set_ylim(0, 1.0)
@@ -127,16 +126,20 @@ def plot_bar_chart_from_dict(
     ax.yaxis.set_major_formatter(FuncFormatter(percent_formatter))
     
     # Customize ticks with light colors
-    ax.tick_params(axis='x', which='major', labelsize=10, width=0.8, 
+    ax.tick_params(axis='x', which='major', labelsize=7, width=0.8, 
                    color='#cccccc', labelcolor='#666666')
-    ax.tick_params(axis='y', which='major', labelsize=12, width=0.8, 
+    ax.tick_params(axis='y', which='major', labelsize=10, width=0.8, 
                    color='#cccccc', labelcolor='#666666')
     
-    # Set light colored spines
+    # Set light colored spines for all four sides
     ax.spines['left'].set_color('#cccccc')
     ax.spines['bottom'].set_color('#cccccc')
+    ax.spines['top'].set_color('#cccccc')
+    ax.spines['right'].set_color('#cccccc')
     ax.spines['left'].set_linewidth(0.8)
     ax.spines['bottom'].set_linewidth(0.8)
+    ax.spines['top'].set_linewidth(0.8)
+    ax.spines['right'].set_linewidth(0.8)
     
     # Adjust layout
     plt.tight_layout()
@@ -220,12 +223,12 @@ def plot_grouped_bar_chart(
                 ax.text(bar.get_x() + bar.get_width()/2., height + max(max(groups.values())) * 0.01,
                        f'{value:.2f}' if isinstance(value, float) else str(value),
                        ha='center', va='bottom',
-                       fontsize=9, color='#333333')
+                       fontsize=7, color='#333333')
     
     # Configure plot
-    ax.set_xlabel(xlabel, fontsize=12, fontweight='normal', color='#333333')
-    ax.set_ylabel(ylabel, fontsize=12, fontweight='normal', color='#333333')
-    ax.set_title(title, fontsize=12, fontweight='normal', color='#333333', pad=20)
+    ax.set_xlabel(xlabel, fontsize=10, fontweight='normal', color='#333333')
+    ax.set_ylabel(ylabel, fontsize=10, fontweight='normal', color='#333333')
+    ax.set_title(title, fontsize=12, fontweight='bold', color='#333333', pad=10)
     ax.set_xticks(x)
     ax.set_xticklabels(categories)
     
@@ -242,13 +245,19 @@ def plot_grouped_bar_chart(
     legend.get_frame().set_linewidth(0.8)
     
     # Styling
-    ax.tick_params(axis='both', which='major', labelsize=12, width=0.8,
+    ax.tick_params(axis='x', which='major', labelsize=7, width=0.8,
+                   color='#cccccc', labelcolor='#666666')
+    ax.tick_params(axis='y', which='major', labelsize=10, width=0.8,
                    color='#cccccc', labelcolor='#666666')
     ax.grid(True, alpha=0.4, linestyle='-', linewidth=0.5, color='#dddddd', axis='y')
     ax.spines['left'].set_color('#cccccc')
     ax.spines['bottom'].set_color('#cccccc')
+    ax.spines['top'].set_color('#cccccc')
+    ax.spines['right'].set_color('#cccccc')
     ax.spines['left'].set_linewidth(0.8)
     ax.spines['bottom'].set_linewidth(0.8)
+    ax.spines['top'].set_linewidth(0.8)
+    ax.spines['right'].set_linewidth(0.8)
     
     plt.tight_layout()
     
@@ -271,9 +280,12 @@ if __name__ == "__main__":
         "Hermes-14B": 0.500,
         "Skywork-OR1-7B": 0.425,
         "R1-Qwen-14B": 0.225,
-        "QwQ-32B": 0.01,
-        "Qwen3-Thinking-4B": 0.025,
+        "QwQ-32B": 0.21,
+        "Qwen3-4B": 0.025,
+        "Qwen3-30B": 0.025,
+        "Phi4": 0.015,
         "LLaMA-8B-it": 0.02,
+        "Qwen2.5-7B-it": 0.02,
     }
     
     # Create output directory
@@ -283,5 +295,6 @@ if __name__ == "__main__":
     plot_bar_chart_from_dict(
         data=data,
         save_path="outputs/fig/model_comparison.pdf",
-        figsize=(6, 4)
+        figsize=(6, 4),
+        title="ASR on Advbench",
     ) 

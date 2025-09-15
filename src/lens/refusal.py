@@ -99,7 +99,7 @@ def find_refusal_head(
     # Enable monkey patching to use custom attention forward method
     if "llama" in model_name.lower():
         enable_monkey_patched_llama(model)
-    elif "qwen" in model_name.lower():
+    elif "qwen" in model_name.lower() or "Skywork-OR1-7B" in model_name or "QwQ" in model_name:
         enable_monkey_patched_qwen(model)
 
     with open(json_path, "r") as f:
