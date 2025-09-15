@@ -69,3 +69,10 @@ python3 fig/draw_attention_heatmap.py plot \
    --save_path="outputs/fig/QwQ-32B_refusal_heatmap.png" \
    --width 3.8 \
    --height 3
+
+python3 fig/draw_validation_curves.py \
+    --val_accuracy="0.5,0.9875,0.9875,0.9750,0.9750" \
+    --val_loss="1.0,0.0001,0.0149,0.0295,0.0421" \
+    --ood_val_accuracy="0.5,0.9175,0.9275,0.9450,0.9350" \
+    --save_path="outputs/fig/validation_curves.pdf" \
+    --title="Training Progress - Validation Metrics"
