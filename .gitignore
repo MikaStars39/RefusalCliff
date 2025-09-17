@@ -7,3 +7,4 @@ data/*
 .gradio
 *.pyc
 __pycache__/*
+debug.py

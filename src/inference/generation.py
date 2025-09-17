@@ -101,7 +101,7 @@ async def process_single_item(
 
             # Debug: show what guided_regex we're using
             guided_regex_value = None
-            if thinking is not None and thinking.strip():
+            if thinking is not None:
                 guided_regex_value = f"^{re.escape(thinking)}\\n</think>.*"
                 
             # Use OpenAI client directly

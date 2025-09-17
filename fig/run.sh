@@ -76,3 +76,8 @@ python3 fig/draw_validation_curves.py \
     --ood_val_accuracy="0.5,0.9175,0.9275,0.9450,0.9350" \
     --save_path="outputs/fig/validation_curves.pdf" \
     --title="Training Progress - Validation Metrics"
+
+python3 fig/draw_attack_metrics.py \
+    --attack_success_rate="0.235,0.22,0.21,0.17,0.10, 0.02" \
+    --refusal_score="0.3870,0.3969,0.4201,0.4538,0.5024,0.6779" \
+    --save_path="outputs/fig/attack_metrics.pdf"
