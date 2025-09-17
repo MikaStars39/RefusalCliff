@@ -20,7 +20,7 @@ python3 fig/draw_refusal_score.py \
 python3 fig/draw_bar_chart.py \
     --data_path outputs/fig/bar_data.json \
     --figsize "(5.4, 3.8)" \
-    --title "ASR on Advbench" \
+    --title "Advbench" \
     --save_path outputs/fig/bar_chart.pdf
 
 python3 fig/draw_comparison_bar_chart.py \

@@ -5,21 +5,14 @@ from typing import List, Optional, Dict, Any
 import json
 import numpy as np
 
-# Set matplotlib style to use scienceplots retro
+# Set matplotlib style to use scienceplots science + notebook styles with retro colors
 import scienceplots
-plt.style.use(['science', 'no-latex', 'retro'])
+plt.style.use(['science', 'notebook', 'retro'])
 
 # Override specific settings to maintain our preferences
 plt.rcParams.update({
-    'font.family': 'sans-serif',
-    'font.sans-serif': ['Helvetica', 'Arial', 'DejaVu Sans', 'Liberation Sans', 'sans-serif'],
-    'font.size': 12,
-    'axes.titlesize': 16,
-    'axes.labelsize': 14,
     'xtick.labelsize': 7,
     'ytick.labelsize': 12,
-    'legend.fontsize': 10,
-    'figure.titlesize': 18,
     'axes.facecolor': '#f8f8f8',  # Light gray background for plot area
     'figure.facecolor': 'white',  # White background for figure
     'savefig.facecolor': 'white',
@@ -108,8 +101,8 @@ def plot_bar_chart_from_dict(
                    zorder=5)
     
     # Configure plot with programmer styling
-    ax.set_title(title, fontsize=12, fontweight='bold', color='#333333', pad=10)
-    ax.set_ylabel("Attack Successful Rate", fontsize=10, fontweight='normal', color='#333333')
+    ax.set_title(title, fontsize=10, fontweight='normal', color='#333333', pad=10)
+    ax.set_ylabel("Attack Successful Rate", fontsize=10, fontweight='normal', color='#333333', labelpad=-2)
     
     # Set x-axis labels
     ax.set_xticks(x_pos)
@@ -128,7 +121,7 @@ def plot_bar_chart_from_dict(
     # Customize ticks with light colors
     ax.tick_params(axis='x', which='major', labelsize=7, width=0.8, 
                    color='#cccccc', labelcolor='#666666')
-    ax.tick_params(axis='y', which='major', labelsize=10, width=0.8, 
+    ax.tick_params(axis='y', which='major', labelsize=7, width=0.8, 
                    color='#cccccc', labelcolor='#666666')
     
     # Set light colored spines for all four sides
@@ -228,7 +221,7 @@ def plot_grouped_bar_chart(
     # Configure plot
     ax.set_xlabel(xlabel, fontsize=10, fontweight='normal', color='#333333')
     ax.set_ylabel(ylabel, fontsize=10, fontweight='normal', color='#333333')
-    ax.set_title(title, fontsize=12, fontweight='bold', color='#333333', pad=10)
+    ax.set_title(title, fontsize=10, fontweight='normal', color='#333333', pad=10)
     ax.set_xticks(x)
     ax.set_xticklabels(categories)
     
@@ -287,6 +280,20 @@ if __name__ == "__main__":
         "LLaMA-8B-it": 0.02,
         "Qwen2.5-7B-it": 0.02,
     }
+
+    # data = {
+    #     "R1-LLaMA-8B": 0.329,
+    #     "R1-Qwen-7B": 0.396,
+    #     "Hermes-14B": 0.36,
+    #     "Skywork-OR1-7B": 0.38,
+    #     "R1-Qwen-14B": 0.48,
+    #     "QwQ-32B": 0.16,
+    #     "Qwen3-4B": 0.015,
+    #     "Qwen3-30B": 0.025,
+    #     "Phi4": 0.015,
+    #     "LLaMA-8B-it": 0.02,
+    #     "Qwen2.5-7B-it": 0.02,
+    # }
     
     # Create output directory
     os.makedirs("outputs/fig", exist_ok=True)
@@ -296,5 +303,5 @@ if __name__ == "__main__":
         data=data,
         save_path="outputs/fig/model_comparison.pdf",
         figsize=(6, 4),
-        title="ASR on Advbench",
+        title="Advbench",
     ) 
