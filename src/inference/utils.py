@@ -24,6 +24,34 @@ def process_data(
             })
             if idx == 999:
                 break
+    
+    elif "wildjailbreak" in dataset_name:
+        dataset = load_dataset(dataset_name, subset_name, delimiter="\t", keep_default_na=False, split=split)
+        for item in dataset:
+            if subset_name == "eval":
+                json_dict.append({
+                "original_item": {
+                    "prompt": item["adversarial"],
+                    "data_type": item["data_type"],
+                }
+            })
+            else:
+                json_dict.append({
+                    "original_item": {
+                        "prompt": item["vanilla"],
+                        "safe_response": item["completion"],
+                        "data_type": item["data_type"],
+                    }
+                })
+    
+    elif "StrongREJECT" in dataset_name:
+        dataset = load_dataset(dataset_name, split=split)
+        for item in dataset:
+            json_dict.append({
+                "original_item": {
+                    "prompt": item["prompt"],
+                }
+            })
         
     elif "basicv8vc/SimpleQA" in dataset_name:
         json_dict = []

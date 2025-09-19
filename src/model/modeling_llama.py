@@ -234,10 +234,6 @@ class LlamaDecoderLayer(GradientCheckpointingLayer):
         hidden_states = self.mlp(hidden_states)
         hidden_states = residual + hidden_states
 
-        if hasattr(self, "refusal_direction"):
-            scale = self.scale / self.refusal_direction.norm() * hidden_states.norm()
-            hidden_states = hidden_states + self.refusal_direction * scale
-
         return hidden_states
 
 

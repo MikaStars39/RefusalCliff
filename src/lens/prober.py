@@ -130,6 +130,7 @@ def test_prober(
     head_ablation_path: str = None,
     top_n_ablation: int = None,
     enhance: bool = False,
+    random_heads: bool = False,
 ):
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -160,17 +161,19 @@ def test_prober(
     
     if head_ablation_path is not None:
         with open(head_ablation_path, "r") as f:
-            head_ablation_data = json.load(f)[:top_n_ablation]
-            if enhance:
-                head_enhancement_data = head_ablation_data
-            else:
-                head_enhancement_data = None
-            
-        add_scale(model, head_ablation_data, 0, head_enhancement_data, 4)
-    # Process each item_type separately
+            head_ablation_data = json.load(f)
+            if random_heads:
+                # shuffle the head_ablation_data
+                random.shuffle(head_ablation_data)
+        add_scale(
+            model, 
+            head_ablation_data[:top_n_ablation], 0, 
+            head_ablation_data[top_n_ablation:] if enhance else None, 16
+        )
+
+
     all_results = {}
-    max_seq_len_global = 0
-    
+    max_seq_len_global = 0   
     for item_type_name in item_type:
         print(f"Processing item_type: {item_type_name}")
         sequences = []
@@ -217,10 +220,6 @@ def test_prober(
 
             layer_h = hidden_states_between_think[chosen_layer].to(torch.float32)
             seq_len = layer_h.shape[1]
-
-            if seq_len == 0:
-                print(f"skip idx={idx} empty thinking span for {item_type_name}")
-                continue
 
             # Get prober result 
             prober_output = torch.sigmoid(prober(layer_h.squeeze(0)))  # Shape: [seq_len, 1] or [seq_len]
@@ -273,19 +272,12 @@ def test_prober(
             f = interpolate.interp1d(x_old, final_result_np, kind='cubic', 
                                    bounds_error=False, fill_value='extrapolate')
             final_result_normalized = torch.tensor(f(x_new), dtype=torch.float32)
-            
-            # Alternative: Simple linear interpolation without align_corners issues
-            # import torch.nn.functional as F
-            # final_result_normalized = F.interpolate(
-            #     final_result.unsqueeze(0).unsqueeze(0), 
-            #     size=100, 
-            #     mode='linear', 
-            #     align_corners=False  # Changed to False to avoid endpoint forcing
-            # ).squeeze()
+ 
         else:
             final_result_normalized = final_result
             
         all_results[item_type_name] = final_result_normalized
+        print("last result: ", final_result_normalized[-1])
         print(f"Processed {len(sequences)} items for {item_type_name}, original shape: {final_result.shape}, normalized to: {final_result_normalized.shape}")
 
     if len(all_results) == 0:

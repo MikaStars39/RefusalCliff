@@ -13,8 +13,8 @@ plt.style.use(['science', 'no-latex', 'retro'])
 
 # Override specific settings to maintain our preferences
 plt.rcParams.update({
-    'font.family': 'sans-serif',
-    'font.sans-serif': ['Helvetica', 'Arial', 'DejaVu Sans', 'Liberation Sans', 'sans-serif'],
+    'font.family': 'serif',
+    'font.serif': ['Georgia', 'Times New Roman', 'DejaVu Serif', 'Liberation Serif', 'serif'],
     'font.size': 12,
     'axes.titlesize': 16,
     'axes.labelsize': 14,
@@ -127,7 +127,7 @@ def plot_attention_heatmap(
     # Configure axes
     ax.set_xlabel('Head Index', fontsize=10, fontweight='normal', color='#333333')
     ax.set_ylabel('Layer Index', fontsize=10, fontweight='normal', color='#333333')
-    ax.set_title(title, fontsize=12, fontweight='bold', color='#333333', pad=10)
+    ax.set_title(title, fontsize=12, fontweight='normal', color='#333333', pad=10)
     
     # Set ticks
     x_ticks = np.arange(0, n_heads, max(1, n_heads // 10))  # Show at most 10 x-ticks
@@ -296,7 +296,7 @@ def plot_attention_heatmap_filtered(
     if title is None:
         threshold_text = f" ({threshold_mode} {threshold})" if threshold is not None else ""
         title = f'Filtered Attention Head {value_key.replace("_", " ").title()} Heatmap{threshold_text}'
-    ax.set_title(title, fontsize=12, fontweight='bold', color='#333333', pad=10)
+    ax.set_title(title, fontsize=12, fontweight='normal', color='#333333', pad=10)
     
     # Set ticks to show full range even if filtered
     x_ticks = np.arange(0, n_heads, max(1, n_heads // 10))

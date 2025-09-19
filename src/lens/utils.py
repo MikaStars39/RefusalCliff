@@ -3,25 +3,6 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 from tqdm import tqdm
 from ..model.modeling_llama import enable_monkey_patched_llama, add_property
 
-def detect_model_type(model_name_or_path: str) -> str:
-    """
-    Detect model type based on model name or path
-    
-    Args:
-        model_name_or_path: Model name or path
-        
-    Returns:
-        str: Model type ('llama', 'qwen', 'unknown')
-    """
-    model_name_lower = model_name_or_path.lower()
-    
-    if any(keyword in model_name_lower for keyword in ['llama', 'deepseek']):
-        return 'llama'
-    elif any(keyword in model_name_lower for keyword in ['qwen']):
-        return 'qwen'
-    else:
-        return 'unknown'
-
 def enable_appropriate_monkey_patch(model, model_name_or_path: str = None):
     """
     Enable the appropriate monkey patch based on model type
@@ -30,17 +11,13 @@ def enable_appropriate_monkey_patch(model, model_name_or_path: str = None):
         model: The model to patch
         model_name_or_path: Optional model name/path for type detection
     """
-    if model_name_or_path:
-        model_type = detect_model_type(model_name_or_path)
+    config_name = model.config.__class__.__name__.lower()
+    if 'llama' in config_name.lower():
+        model_type = 'llama'
+    elif 'qwen' in config_name.lower() or "Skywork-OR1-7B" in config_name or "QwQ" in config_name:
+        model_type = 'qwen'
     else:
-        # Try to detect from model config
-        config_name = model.config.__class__.__name__.lower()
-        if 'llama' in config_name.lower():
-            model_type = 'llama'
-        elif 'qwen' in config_name.lower() or "Skywork-OR1-7B" in config_name or "QwQ" in config_name:
-            model_type = 'qwen'
-        else:
-            model_type = 'unknown'
+        model_type = 'unknown'
     
     if model_type == 'llama':
         enable_monkey_patched_llama(model)

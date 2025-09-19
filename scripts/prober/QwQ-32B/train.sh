@@ -10,13 +10,13 @@ CUDA_VISIBLE_DEVICES=0 python3 run.py extract_hidden_states \
     --model_path "Qwen/QwQ-32B" \
     --json_path outputs/refusal/QwQ-32B/no_refusal.json \
     --save_path outputs/refusal/QwQ-32B/no_refusal.pt \
-    --layer_index 28
+    --layer_index 64
 
 CUDA_VISIBLE_DEVICES=0 python3 run.py extract_hidden_states \
     --model_path "Qwen/QwQ-32B" \
     --json_path outputs/refusal/QwQ-32B/refusal.json \
     --save_path outputs/refusal/QwQ-32B/refusal.pt \
-    --layer_index 28
+    --layer_index 64
 
 python3 run.py train_prober \
     --or_path outputs/refusal/QwQ-32B/no_refusal.pt \

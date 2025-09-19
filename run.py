@@ -13,7 +13,7 @@ from src.lens.attn_head import (
     ablating_attn_head,
     analyze_attn_patterns,
 )
-from src.lens.generation import ablating_head_generation, ablating_head_prober
+from src.lens.generation import ablating_head_generation
 from src.lens.refusal import find_refusal_head
 from src.train.create_data import (
     create_malicious_data,
@@ -39,7 +39,6 @@ if __name__ == "__main__":
             "trace_attn_head": trace_attn_head,
             "ablating_attn_head": ablating_attn_head,
             "ablating_head_generation": ablating_head_generation,
-            "ablating_head_prober": ablating_head_prober,
             "analyze_attn_patterns": analyze_attn_patterns,
             # refusal vector
             "find_refusal_head": find_refusal_head,
