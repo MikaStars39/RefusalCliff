@@ -10,8 +10,8 @@ plt.style.use(['science', 'no-latex', 'retro'])
 
 # Override specific settings to maintain our preferences
 plt.rcParams.update({
-    'font.family': 'sans-serif',
-    'font.sans-serif': ['Helvetica', 'Arial', 'DejaVu Sans', 'Liberation Sans', 'sans-serif'],
+    'font.family': 'serif',
+    'font.serif': ['Georgia', 'Times New Roman', 'DejaVu Serif', 'Liberation Serif', 'serif'],
     'font.size': 12,
     'axes.titlesize': 16,
     'axes.labelsize': 14,
@@ -107,7 +107,7 @@ def plot_single_curve_with_references(
                linewidth=1.5, alpha=0.7, label='Safe Model Plateau')
     
     # Configure plot styling
-    ax.set_title(title, fontsize=12, fontweight='bold', color='#333333', pad=10)
+    ax.set_title(title, fontsize=12, fontweight='normal', color='#333333', pad=10)
     ax.set_xlabel('Normalized Position', fontsize=10, fontweight='normal', color='#333333')
     ax.set_ylabel('Refusal Score', fontsize=10, fontweight='normal', color='#333333')
     
@@ -116,9 +116,7 @@ def plot_single_curve_with_references(
     
     # Set axis limits and ticks
     ax.set_xlim(-5, 105)  # Start from -5 for better spacing
-    ax.set_ylim(-0.1, 0.85)
-    
-
+    ax.set_ylim(-0.1, 0.75)
     
     # Customize ticks with light colors
     ax.tick_params(axis='both', which='major', labelsize=10, width=0.8, 

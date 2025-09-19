@@ -11,6 +11,8 @@ plt.style.use(['science', 'notebook', 'retro'])
 
 # Override specific settings to maintain our preferences
 plt.rcParams.update({
+    'font.family': 'serif',
+    'font.serif': ['Georgia', 'Times New Roman', 'DejaVu Serif', 'Liberation Serif', 'serif'],
     'xtick.labelsize': 7,
     'ytick.labelsize': 12,
     'axes.facecolor': '#f8f8f8',  # Light gray background for plot area

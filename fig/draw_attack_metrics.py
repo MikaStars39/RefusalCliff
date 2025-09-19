@@ -9,8 +9,8 @@ plt.style.use(['science', 'no-latex', 'retro'])
 
 # Override specific settings to maintain our preferences
 plt.rcParams.update({
-    'font.family': 'sans-serif',
-    'font.sans-serif': ['Helvetica', 'Arial', 'DejaVu Sans', 'Liberation Sans', 'sans-serif'],
+    'font.family': 'serif',
+    'font.serif': ['Georgia', 'Times New Roman', 'DejaVu Serif', 'Liberation Serif', 'serif'],
     'font.size': 12,
     'axes.titlesize': 16,
     'axes.labelsize': 14,
@@ -34,7 +34,7 @@ def plot_attack_metrics(
     attack_success_rate: List[float],
     refusal_score: List[float],
     save_path: Optional[str] = None,
-    figsize: tuple = (5, 3.2),
+    figsize: tuple = (4, 4),
     linewidth: float = 2.0
 ) -> None:
     """
