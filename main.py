@@ -1,6 +1,6 @@
 import json
 
-with open("outputs/train/llama-3-8b-distill/wildjailbreak_bad_case.json", "r") as f:
+with open("outputs/train/llama-3-8b-distill/wildjailbreak.json", "r") as f:
     data = json.load(f)
 new_data = []
 
@@ -17,6 +17,6 @@ for idx in range(len(data)):
 import random
 random.shuffle(new_data)
 
-with open("data/wildjailbreak_005.json", "w") as f:
-    json.dump(new_data[:int(len(new_data) * 0.05)], f, indent=4)
+with open("data/wildjailbreak_all.json", "w") as f:
+    json.dump(new_data, f, indent=4)
 
