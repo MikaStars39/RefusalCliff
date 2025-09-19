@@ -34,22 +34,16 @@ def ablating_head_generation(
     add_scale(model, head_ablation_data, 0, None, 0)
     
     batch_messages = []
-    thinking = []
 
     for item in data:
         batch_messages.append([{"role": "user", "content": item["original_item"]["prompt"]}])
-        thinking.append(item[item_type]["thinking"])
-        if thinking_portion < 0.0:
-            thinking[-1] = " "
-        elif thinking_portion > 0.0:
-            thinking[-1] = thinking[-1][:int(len(thinking[-1]) * thinking_portion)]
 
     all_outputs = []
     outputs = batch_gen(
         tokenizer=tokenizer, 
         model=model, 
         messages=batch_messages, 
-        thinking=thinking,
+        thinking=None,
         batch_size=batch_size,
         max_new_tokens=max_new_tokens,
         temperature=temperature,
@@ -60,7 +54,7 @@ def ablating_head_generation(
             {
                 "original_item": {
                     "prompt": data[idx]["original_item"]["prompt"],
-                    "thinking": data[idx]["original_item"]["thinking"],
+                    "thinking": None,
                     "response": item,
                 }
             }
@@ -68,11 +62,3 @@ def ablating_head_generation(
     
     with open(save_path, "w") as f:
         json.dump(all_outputs, f, indent=4)
-    
-    # check how many refusals
-    count_refusal = 0
-    for item in all_outputs:
-        if any(word.lower() in item["response"].lower() for word in refusal_words):
-            count_refusal += 1
-    
-    print(f"Total refusals: {count_refusal / len(all_outputs)}")

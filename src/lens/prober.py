@@ -165,6 +165,7 @@ def test_prober(
             if random_heads:
                 # shuffle the head_ablation_data
                 random.shuffle(head_ablation_data)
+                print(f"Shuffled head_ablation_data")
         add_scale(
             model, 
             head_ablation_data[:top_n_ablation], 0, 

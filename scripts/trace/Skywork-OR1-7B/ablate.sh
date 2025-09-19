@@ -32,5 +32,7 @@ CUDA_VISIBLE_DEVICES=0 python3 run.py test_prober \
     --thinking_portion 0 \
     --item_type "original_item" \
     --head_ablation_path outputs/refusal/Skywork-OR1-7B/refusal_suppression_heads.json \
-    --top_n_ablation 128 \
-    --enhance True
+    --top_n_ablation 32 \
+    --enhance True \
+    --random_heads True
+

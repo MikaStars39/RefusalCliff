@@ -28,7 +28,7 @@ from transformers.processing_utils import Unpack
 from transformers.utils import TransformersKwargs, logging
 from transformers.models.qwen2.configuration_qwen2 import Qwen2Config
 from transformers.modeling_layers import GradientCheckpointingLayer
-
+from transformers.integrations.sdpa_attention import use_gqa_in_sdpa
 from transformers.models.qwen2.modeling_qwen2 import (
     apply_rotary_pos_emb,
     repeat_kv,
@@ -38,55 +38,73 @@ from transformers.models.qwen2.modeling_qwen2 import (
 
 logger = logging.get_logger(__name__)
 
-def eager_attention_forward(
-    module: nn.Module,
+def sdpa_attention_forward(
+    module: torch.nn.Module,
     query: torch.Tensor,
     key: torch.Tensor,
     value: torch.Tensor,
     attention_mask: Optional[torch.Tensor],
-    scaling: float,
     dropout: float = 0.0,
+    scaling: Optional[float] = None,
+    is_causal: Optional[bool] = None,
     scale: dict = None,
     input_shape: tuple = None,
-    **kwargs: Unpack[TransformersKwargs],
-):  
-    key_states = repeat_kv(key, module.num_key_value_groups)
-    value_states = repeat_kv(value, module.num_key_value_groups)
-
-    attn_weights = torch.matmul(query, key_states.transpose(2, 3)) * scaling
-
-    if attention_mask is not None:
-        # Handle different attention mask shapes
-        if attention_mask.dim() == 2:
-            # For 2D masks (batch_size, seq_len), expand to 4D
-            batch_size, seq_len = attention_mask.shape
-            # Create causal mask
-            causal_mask = attention_mask.view(batch_size, 1, 1, seq_len)
-            causal_mask = causal_mask.expand(batch_size, 1, seq_len, seq_len)
-        elif attention_mask.dim() == 4:
-            # For 4D masks, use as-is but slice to key length
-            causal_mask = attention_mask[:, :, :, : key_states.shape[-2]]
+    **kwargs,
+) -> tuple[torch.Tensor, None]:
+    if kwargs.get("output_attentions", False) or kwargs.get("head_mask") is not None:
+        logger.warning_once(
+            "`sdpa` attention does not support `output_attentions=True` or `head_mask`."
+            " Please set your attention to `eager` if you want any of these features."
+        )
+    sdpa_kwargs = {}
+    if hasattr(module, "num_key_value_groups"):
+        if not use_gqa_in_sdpa(attention_mask, key):
+            key = repeat_kv(key, module.num_key_value_groups)
+            value = repeat_kv(value, module.num_key_value_groups)
         else:
-            # For other dimensions, try to handle gracefully
-            causal_mask = attention_mask
-        
-        attn_weights = attn_weights + causal_mask
+            sdpa_kwargs = {"enable_gqa": True}
 
-    attn_weights = nn.functional.softmax(attn_weights, dim=-1, dtype=torch.float32).to(query.dtype)
-    attn_weights = nn.functional.dropout(attn_weights, p=dropout, training=module.training)
+    if attention_mask is not None and attention_mask.ndim == 4:
+        attention_mask = attention_mask[:, :, :, : key.shape[-2]]
 
-    attn_output = torch.matmul(attn_weights, value_states)
-    attn_output_o = attn_output.transpose(1, 2).contiguous()
-    attn_output_o = attn_output_o.reshape(*input_shape, -1).contiguous()
-    attn_output_o_norm = attn_output_o.norm()
+    # SDPA with memory-efficient backend is bugged with non-contiguous inputs and custom attn_mask for some torch versions
+    # Reference: https://github.com/pytorch/pytorch/issues/112577.
+    query = query.contiguous()
+    key = key.contiguous()
+    value = value.contiguous()
+
+    # We dispatch to SDPA's Flash Attention or Efficient kernels via this `is_causal` if statement instead of an inline conditional assignment
+    # in SDPA to support both torch.compile's dynamic shapes and full graph options. An inline conditional prevents dynamic shapes from compiling.
+    # Note that it is important to check first for the shape, otherwise compile will fail with `argument 'is_causal' must be bool, not SymBool`
+    if is_causal is None:
+        # The last condition is for encoder (decoder) models which specify this by passing their own `is_causal` flag
+        # This is mainly due to those models having mixed implementations for encoder, decoder, and encoder-decoder attns
+        is_causal = query.shape[2] > 1 and attention_mask is None and getattr(module, "is_causal", True)
+
+    # Shapes (e.g. query.shape[2]) are tensors during jit tracing, resulting in `is_causal` being a tensor.
+    # We convert it to a bool for the SDPA kernel that only accepts bools.
+    if torch.jit.is_tracing() and isinstance(is_causal, torch.Tensor):
+        is_causal = is_causal.item()
+
+    attn_output = torch.nn.functional.scaled_dot_product_attention(
+        query,
+        key,
+        value,
+        attn_mask=attention_mask,
+        dropout_p=dropout,
+        scale=scaling,
+        is_causal=is_causal,
+        **sdpa_kwargs,
+    )
+    attn_output = attn_output.transpose(1, 2).contiguous()
 
     if scale is not None:
+        attn_output_o_norm = attn_output.reshape(*input_shape, -1).contiguous().norm()
         for head_idx in scale["heads"]:
-            attn_output[:, head_idx, :, :] = attn_output[:, head_idx, :, :] * scale["values"][module.layer_idx][head_idx]
+            attn_output[:, :, head_idx, :] = attn_output[:, :, head_idx, :] * scale["values"][module.layer_idx][head_idx]
         attn_output = attn_output / (attn_output.norm() / attn_output_o_norm)
 
-    return attn_output, attn_weights
-
+    return attn_output, None
 
 class Qwen2Attention(nn.Module):
     """Multi-headed attention from 'Attention Is All You Need' paper"""
@@ -100,19 +118,11 @@ class Qwen2Attention(nn.Module):
         self.scaling = self.head_dim**-0.5
         self.attention_dropout = config.attention_dropout
         self.is_causal = True
-
         self.q_proj = nn.Linear(config.hidden_size, config.num_attention_heads * self.head_dim, bias=True)
         self.k_proj = nn.Linear(config.hidden_size, config.num_key_value_heads * self.head_dim, bias=True)
         self.v_proj = nn.Linear(config.hidden_size, config.num_key_value_heads * self.head_dim, bias=True)
         self.o_proj = nn.Linear(config.num_attention_heads * self.head_dim, config.hidden_size, bias=False)
-        
-        # Qwen2 specific: sliding window support
-        self.sliding_window = getattr(config, 'sliding_window', None)
-        if hasattr(config, 'layer_types') and layer_idx < len(config.layer_types):
-            if config.layer_types[layer_idx] == "sliding_attention":
-                self.sliding_window = config.sliding_window
-        else:
-            self.sliding_window = None
+        self.sliding_window = config.sliding_window if config.layer_types[layer_idx] == "sliding_attention" else None
 
     def forward(
         self,
@@ -121,11 +131,15 @@ class Qwen2Attention(nn.Module):
         attention_mask: Optional[torch.Tensor],
         past_key_value: Optional[Cache] = None,
         cache_position: Optional[torch.LongTensor] = None,
-        **kwargs: Unpack[TransformersKwargs],
-    ) -> tuple[torch.Tensor, torch.Tensor]:
+        **kwargs
+    ) -> tuple[torch.Tensor, Optional[torch.Tensor], Optional[tuple[torch.Tensor]]]:
         input_shape = hidden_states.shape[:-1]
         hidden_shape = (*input_shape, -1, self.head_dim)
-        
+
+        query_states = self.q_proj(hidden_states).view(hidden_shape).transpose(1, 2)
+        key_states = self.k_proj(hidden_states).view(hidden_shape).transpose(1, 2)
+        value_states = self.v_proj(hidden_states).view(hidden_shape).transpose(1, 2)
+
         # check if self has scale
         scale = None
         if hasattr(self, "scale"):
@@ -140,10 +154,6 @@ class Qwen2Attention(nn.Module):
             else:
                 scale = None
 
-        query_states = self.q_proj(hidden_states).view(hidden_shape).transpose(1, 2)
-        key_states = self.k_proj(hidden_states).view(hidden_shape).transpose(1, 2)
-        value_states = self.v_proj(hidden_states).view(hidden_shape).transpose(1, 2)
-
         cos, sin = position_embeddings
         query_states, key_states = apply_rotary_pos_emb(query_states, key_states, cos, sin)
 
@@ -152,7 +162,7 @@ class Qwen2Attention(nn.Module):
             cache_kwargs = {"sin": sin, "cos": cos, "cache_position": cache_position}
             key_states, value_states = past_key_value.update(key_states, value_states, self.layer_idx, cache_kwargs)
 
-        attention_interface: Callable = eager_attention_forward
+        attention_interface = sdpa_attention_forward
 
         attn_output, attn_weights = attention_interface(
             self,
@@ -160,13 +170,13 @@ class Qwen2Attention(nn.Module):
             key_states,
             value_states,
             attention_mask,
-            scaling=self.scaling,
             dropout=0.0 if not self.training else self.attention_dropout,
+            scaling=self.scaling,
+            sliding_window=self.sliding_window,  # main diff with Llama
             scale=scale,
             input_shape=input_shape,
             **kwargs,
         )
-        attn_output = attn_output.transpose(1, 2).contiguous()
 
         if hasattr(self, "refusal_head"):
             all_outputs = []
@@ -189,63 +199,6 @@ class Qwen2Attention(nn.Module):
         attn_output = self.o_proj(attn_output)
         return attn_output, attn_weights
 
- 
-class Qwen2DecoderLayer(GradientCheckpointingLayer):
-    def __init__(self, config: Qwen2Config, layer_idx: int):
-        super().__init__()
-        self.hidden_size = config.hidden_size
-
-        self.self_attn = Qwen2Attention(config=config, layer_idx=layer_idx)
-
-        self.mlp = Qwen2MLP(config)
-        self.input_layernorm = Qwen2RMSNorm(config.hidden_size, eps=config.rms_norm_eps)
-        self.post_attention_layernorm = Qwen2RMSNorm(config.hidden_size, eps=config.rms_norm_eps)
-        
-        # Qwen2 specific: attention type tracking
-        if hasattr(config, 'layer_types') and layer_idx < len(config.layer_types):
-            self.attention_type = config.layer_types[layer_idx]
-        else:
-            self.attention_type = "full_attention"  # default
-
-    def forward(
-        self,
-        hidden_states: torch.Tensor,
-        attention_mask: Optional[torch.Tensor] = None,
-        position_ids: Optional[torch.LongTensor] = None,
-        past_key_value: Optional[Cache] = None,
-        use_cache: Optional[bool] = False,
-        cache_position: Optional[torch.LongTensor] = None,
-        position_embeddings: Optional[tuple[torch.Tensor, torch.Tensor]] = None,  # necessary, but kept here for BC
-        **kwargs: Unpack[TransformersKwargs],
-    ) -> tuple[torch.Tensor]:
-        residual = hidden_states
-        hidden_states = self.input_layernorm(hidden_states)
-        
-        # Self Attention
-        hidden_states, _ = self.self_attn(
-            hidden_states=hidden_states,
-            attention_mask=attention_mask,
-            position_ids=position_ids,
-            past_key_value=past_key_value,
-            use_cache=use_cache,
-            cache_position=cache_position,
-            position_embeddings=position_embeddings,
-            **kwargs,
-        )
-        hidden_states = residual + hidden_states
-
-        # Fully Connected
-        residual = hidden_states
-        hidden_states = self.post_attention_layernorm(hidden_states)
-        hidden_states = self.mlp(hidden_states)
-        hidden_states = residual + hidden_states
-
-        if hasattr(self, "refusal_direction"):
-            scale = self.scale / self.refusal_direction.norm() * hidden_states.norm()
-            hidden_states = hidden_states + self.refusal_direction * scale
-
-        return hidden_states
-
 
 def enable_monkey_patched_qwen(model):
     # recursively patch the model to the attention layer
@@ -262,19 +215,6 @@ def enable_monkey_patched_qwen(model):
 
     recursive_patch(model)
 
-def enable_monkey_patched_qwen_decoder(model):
-    """Monkey patch the Qwen2DecoderLayer forward method"""
-    def recursive_patch(model):
-        for name, module in reversed(model._modules.items()):
-            if len(list(module.children())) > 0:
-                recursive_patch(module)
-            # Check if this is a decoder layer by looking for common patterns
-            if hasattr(module, 'self_attn') and hasattr(module, 'mlp') and hasattr(module, 'input_layernorm'):
-                model._modules[name].forward = types.MethodType(
-                    Qwen2DecoderLayer.forward, model._modules[name]
-                )
-    
-    recursive_patch(model)
 
 def add_property(model, module_name, property_name, property_value):
     # recursively patch the model
