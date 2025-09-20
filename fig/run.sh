@@ -7,7 +7,7 @@ python3 fig/draw_refusal_score.py \
 
 python3 fig/draw_refusal_score.py \
     --pt_paths outputs/fig/pt/pt_files.json \
-    --figsize "(5.4, 3.4)" \
+    --figsize "(5.4, 2.7)" \
     --save_path outputs/fig/pt_refusal_score.pdf \
     --title "Refusal Score"
 
@@ -19,7 +19,7 @@ python3 fig/draw_refusal_score.py \
 
 python3 fig/draw_bar_chart.py \
     --data_path outputs/fig/bar_data.json \
-    --figsize "(5.4, 3.8)" \
+    --figsize "(6.5, 2.5)" \
     --title "Advbench" \
     --save_path outputs/fig/bar_chart.pdf
 

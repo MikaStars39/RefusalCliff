@@ -34,7 +34,7 @@ def plot_bar_chart_from_dict(
     xlabel: str = "Models",
     ylabel: str = "Values",
     figsize: tuple = (8, 6),
-    colors: Optional[List[str]] = None,
+    colors: Optional[Dict[str, str]] = None,  # Now accepts dict mapping labels to colors
     bar_width: float = 0.3,  # Keep bars thin
     show_values: bool = True,
 ) -> None:
@@ -48,7 +48,7 @@ def plot_bar_chart_from_dict(
         xlabel: X-axis label
         ylabel: Y-axis label
         figsize: Figure size tuple
-        colors: Optional list of colors for bars
+        colors: Optional dict mapping labels to colors, or None for default colors
         bar_width: Width of bars (0.0 to 1.0)
         show_values: Whether to show values on top of bars
     """
@@ -59,9 +59,7 @@ def plot_bar_chart_from_dict(
         raise ValueError("Both values and labels must be provided")
     
     # Use scienceplots retro color palette
-    if colors is None:
-        # Get retro colors from matplotlib's current color cycle
-        colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+    default_colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
     
     # Create figure with programmer styling
     fig, ax = plt.subplots(figsize=figsize)
@@ -74,21 +72,25 @@ def plot_bar_chart_from_dict(
     # Create bar positions with reduced spacing
     x_pos = np.arange(len(labels)) * 0.5 # Reduce spacing between bars
     
-    # Create color list with gradient and special color for last bar
+    # Create color list - use custom colors if provided, otherwise default
     bar_colors = []
-    for i in range(len(values)):
-        if i == len(values) - 1:  # Last bar is dark gray
+    for i, label in enumerate(labels):
+        if colors and label in colors:
+            # Use custom color for this specific label
+            bar_colors.append(colors[label])
+        elif i == len(values) - 1:  # Last bar is dark gray if no custom color
             bar_colors.append('#404040')  # Dark gray
         else:
-            # Use colors from the palette in order
-            bar_colors.append(colors[i % len(colors)])
+            # Use default colors from the palette in order
+            bar_colors.append(default_colors[i % len(default_colors)])
     
     # Create standard rectangular bars
     bars = ax.bar(x_pos, values, 
                   width=bar_width,
                   color=bar_colors,
                   alpha=0.85,
-                  edgecolor='none',
+                  edgecolor='#888888',
+                  linewidth=0.8,
                   zorder=3)
     
     # Add value labels on top of bars if requested
@@ -104,15 +106,14 @@ def plot_bar_chart_from_dict(
     
     # Configure plot with programmer styling
     ax.set_title(title, fontsize=10, fontweight='normal', color='#333333', pad=10)
-    ax.set_ylabel("Attack Successful Rate", fontsize=10, fontweight='normal', color='#333333', labelpad=-2)
+    ax.set_ylabel("Attack Successful Rate", fontsize=10, fontweight='normal', color='#333333', labelpad=0)
     
     # Set x-axis labels
     ax.set_xticks(x_pos)
-    ax.set_xticklabels(labels, rotation=20 if len(max(labels, key=len)) > 8 else 0, 
-                       ha='right' if len(max(labels, key=len)) > 8 else 'center')  # Font size controlled by rcParams
+    ax.set_xticklabels(labels, rotation=20, ha='right')  # Font size controlled by rcParams
     
     # Set y-axis limits to 0-100% (0.0-1.0 in decimal)
-    ax.set_ylim(0, 1.0)
+    ax.set_ylim(0, 0.8)
     
     # Format y-axis as percentages
     from matplotlib.ticker import FuncFormatter
@@ -121,7 +122,7 @@ def plot_bar_chart_from_dict(
     ax.yaxis.set_major_formatter(FuncFormatter(percent_formatter))
     
     # Customize ticks with light colors
-    ax.tick_params(axis='x', which='major', labelsize=7, width=0.8, 
+    ax.tick_params(axis='x', which='major', labelsize=9, width=0.8, 
                    color='#cccccc', labelcolor='#666666')
     ax.tick_params(axis='y', which='major', labelsize=7, width=0.8, 
                    color='#cccccc', labelcolor='#666666')
@@ -270,40 +271,81 @@ def plot_grouped_bar_chart(
 if __name__ == "__main__":
     # Data to plot
     data = {
-        "R1-LLaMA-8B": 0.672,
-        "R1-Qwen-7B": 0.525,
-        "Hermes-14B": 0.500,
-        "Skywork-OR1-7B": 0.425,
-        "R1-Qwen-14B": 0.225,
-        "QwQ-32B": 0.21,
-        "Qwen3-4B": 0.025,
-        "Qwen3-30B": 0.025,
-        "Phi4": 0.015,
-        "LLaMA-8B-it": 0.02,
-        "Qwen2.5-7B-it": 0.02,
+        "OR1-7B": 0.35192307692307695,        # Skywork-OR1-7B
+        "R1-7B": 0.3403846153846154,                         # RealSafe-R1-7B
+        "R1-8B": 0.19038461538461537,         # DeepSeek-R1-Distill-Llama-8B
+        "Hermes-14B": 0.15384615384615385,    # Hermes-4-14B
+        "R1-14B": 0.14423076923076922,        # DeepSeek-R1-Distill-Qwen-14B
+        "Phi4-mini": 0.175,                   # Phi-4-mini-reasoning
+        "Phi4": 0.07884615384615384,   
+        "QwQ-32B": 0.019230769230769232,      # QwQ-32B                     # Phi-4-reasoning
+        "Qwen3-4B": 0.0019230769230769232,    # Qwen3-4B-Thinking-2507
+        "Qwen3-30B": 0.0010230769230769232,
+        "Realsafe-7B": 0.0,                   # RealSafe-R1-7B
+        "Realsafe-8B": 0.0,                   # RealSafe-R1-8B
+        # "LLaMA-8B": missing in all.sh, skip
+        # "Qwen2.5-7B": missing in all.sh, skip
     }
 
-    # data = {
-    #     "R1-LLaMA-8B": 0.329,
-    #     "R1-Qwen-7B": 0.396,
-    #     "Hermes-14B": 0.36,
-    #     "Skywork-OR1-7B": 0.38,
-    #     "R1-Qwen-14B": 0.48,
-    #     "QwQ-32B": 0.16,
-    #     "Qwen3-4B": 0.015,
-    #     "Qwen3-30B": 0.025,
-    #     "Phi4": 0.015,
-    #     "LLaMA-8B-it": 0.02,
-    #     "Qwen2.5-7B-it": 0.02,
-    # }
+    data = {
+        "R1-8B": 0.329,
+        "R1-7B": 0.396,
+        "Hermes-14B": 0.36,
+        "OR1-7B": 0.38,
+        "R1-14B": 0.44,
+        "QwQ-32B": 0.16,
+        "Qwen3-4B": 0.015,
+        "Qwen3-30B": 0.025,
+        "Phi4": 0.015,
+        "Phi4-mini": 0.175,                   # Phi-4-mini-reasoning
+        "Realsafe-7B": 0.0,                   # RealSafe-R1-7B
+        "Realsafe-8B": 0.0,                   # RealSafe-R1-8B
+    }
+
+    # rank by ASR rate
+    data = dict(sorted(data.items(), key=lambda x: x[1], reverse=True))
     
     # Create output directory
     os.makedirs("outputs/fig", exist_ok=True)
     
+    # Custom colors for specific models (scienceplots retro color palette)
+    retro_colors = ["#B5739D", "#7EA6E0", "#67AB9F", "#97D077", "#FFD966", "#FFB570", "#EA6B66"]
+    
+    custom_colors = {
+        "OR1-7B": "#B5739D",      # Retro Purple
+        "R1-7B": "#7EA6E0",       # Retro Blue
+        "R1-8B": "#67AB9F",       # Retro Teal
+        "Hermes-14B": "#97D077",  # Retro Green
+        "R1-14B": "#FFD966",      # Retro Yellow
+        "Phi4-mini": "#FFB570",   # Retro Orange
+        "QwQ-32B": "#EA6B66",     # Retro Red
+        "Phi4": "#B5739D",        # Retro Purple (repeat)
+        "Qwen3-4B": "#7EA6E0",    # Retro Blue (repeat)
+        "Qwen3-30B": "#67AB9F",   # Retro Teal (repeat)
+        "Realsafe-7B": "#696969", # Dim Gray
+        "Realsafe-8B": "#778899", # Light Slate Gray
+    }
+
+    custom_colors = {
+        "OR1-7B": "#EA6B66",     # Retro Red
+        "R1-7B": "#FFB570",   # Retro Orange
+        "R1-8B": "#FFB570",   # Retro Orange
+        "Hermes-14B": "#EA6B66",     # Retro Red
+        "R1-14B": "#FFB570",   # Retro Orange
+        "Phi4-mini": "#FFB570",   # Retro Orange
+        "QwQ-32B": "#EA6B66",     # Retro Red
+        "Phi4":"#EA6B66",     # Retro Red
+        "Qwen3-4B": "#97D077",  # Retro Green
+        "Qwen3-30B": "#97D077",  # Retro Green
+        "Realsafe-7B": "#97D077",  # Retro Green
+        "Realsafe-8B": "#97D077",  # Retro Green
+    }
+    
     # Plot the bar chart using the data dictionary
     plot_bar_chart_from_dict(
         data=data,
-        save_path="outputs/fig/model_comparison.pdf",
-        figsize=(6, 4),
-        title="Advbench",
+        save_path="outputs/fig/model_comparison_wj.pdf",
+        figsize=(6, 3),
+        title="WildJailbreak",
+        colors=custom_colors,  # Pass custom colors
     ) 

@@ -14,13 +14,13 @@ plt.rcParams.update({
     'font.family': 'serif',
     'font.serif': ['Georgia', 'Times New Roman', 'DejaVu Serif', 'Liberation Serif', 'serif'],
     'font.size': 12,
-    'axes.titlesize': 16,
-    'axes.labelsize': 14,
+    'axes.titlesize': 12,
+    'axes.labelsize': 12,
     'xtick.labelsize': 12,
     'ytick.labelsize': 12,
     'legend.fontsize': 10,
     'figure.titlesize': 18,
-    'axes.facecolor': '#f8f8f8',  # Light gray background for plot area
+    'axes.facecolor': 'white',  # White background for plot area
     'figure.facecolor': 'white',  # White background for figure
     'savefig.facecolor': 'white',
     'savefig.edgecolor': 'none',
@@ -37,7 +37,7 @@ def plot_multiple_prober_results(
     save_path: Optional[str] = None,
     figsize: tuple = (6, 4),
     colors: Optional[List[str]] = None,
-    linewidth: float = 1.5,
+    linewidth: float = 1.0,
     title: str = "Refusal Score Analysis",
 ) -> None:
     """
@@ -69,7 +69,7 @@ def plot_multiple_prober_results(
     # Create figure with programmer styling
     fig, ax = plt.subplots(figsize=figsize)
     fig.patch.set_facecolor('white')  # White background for figure
-    ax.set_facecolor('#f8f8f8')  # Light gray background for plot area
+    ax.set_facecolor('white')  # White background for plot area
     
     for i, (pt_path, label) in enumerate(zip(pt_file_paths, labels)):
         if not os.path.exists(pt_path):
@@ -100,8 +100,8 @@ def plot_multiple_prober_results(
                     
                     # Add circular markers at sampled positions
                     ax.scatter(sample_positions, sample_values,
-                             facecolor=base_color, edgecolor='black', s=25, 
-                             linewidth=0.8, zorder=6, alpha=0.9)
+                             facecolor=base_color, edgecolor='none', s=15, 
+                             zorder=6, alpha=0.9)
                            
             elif isinstance(results, torch.Tensor):
                 # Single tensor result
@@ -122,8 +122,8 @@ def plot_multiple_prober_results(
                     
                     # Add circular markers at sampled positions
                     ax.scatter(sample_positions, sample_values,
-                             facecolor=color, edgecolor='black', s=25, 
-                             linewidth=0.8, zorder=6, alpha=0.9)
+                             facecolor=color, edgecolor='none', s=15, 
+                             zorder=6, alpha=0.9)
                            
                 elif results.dim() == 2:
                     # 2D tensor (multiple sequences or layer results)
@@ -146,8 +146,8 @@ def plot_multiple_prober_results(
                             
                             # Add circular markers at sampled positions
                             ax.scatter(sample_positions, sample_values,
-                                     facecolor=base_color, edgecolor='black', s=25, 
-                                     linewidth=0.8, zorder=6, alpha=0.9)
+                                     facecolor=base_color, edgecolor='none', s=15, 
+                                     zorder=6, alpha=0.9)
                     else:
                         print(f"Warning: Unexpected tensor shape {results.shape} in {pt_path}")
                 else:
@@ -160,12 +160,12 @@ def plot_multiple_prober_results(
             continue
     
     # Configure plot with programmer styling
-    ax.set_title(title, fontsize=12, fontweight='normal', color='#333333', pad=10)
+    ax.set_title(title, fontsize=10, fontweight='normal', color='#333333', pad=10)
     ax.set_xlabel('Normalized Position', fontsize=10, fontweight='normal', color='#333333')
     ax.set_ylabel('Refusal Score', fontsize=10, fontweight='normal', color='#333333')
     
-    # Add grayer background for the last 5% of x-axis (right 5%)
-    ax.axvspan(95, 105, alpha=0.2, color='#c8c8c8', zorder=0)  # More subtle background
+    # Add grayer background for the last 10% of x-axis (right 10%)
+    ax.axvspan(90, 105, alpha=0.25, color='#d0d0d0', zorder=0)  # Darker gray background
     
     # Set axis limits and ticks
     ax.set_xlim(-5, 105)  # Start from -5 for better spacing
@@ -180,17 +180,19 @@ def plot_multiple_prober_results(
     # Add grid with subtle styling (this will include vertical line at 100)
     ax.grid(True, alpha=0.4, linestyle='-', linewidth=0.5, color='#dddddd')
     
-    # Configure legend with darker background, no border, and rounded corners
+    # Configure legend with white background, positioned outside on the right
     legend = ax.legend(
         frameon=True, 
         fancybox=True,  # Enable rounded corners
         edgecolor='none',  # No border
-        facecolor='#e8e8e8',  # Darker gray background
+        facecolor='white',  # White background
         framealpha=0.95,
         fontsize=8,
-        loc=(0.05, 0.50),  # Position further down from top-left corner
+        bbox_to_anchor=(1.02, 0.5),  # Position outside the plot area on the right, vertically centered
+        loc='center left',  # Anchor point for the legend
         borderpad=1.0,  # Increase padding between text and legend border
-        handletextpad=0.8,  # Space between legend markers and text
+        handletextpad=0.5,  # Space between legend markers and text
+        handlelength=1.0,  # Length of legend lines (shorter)
         columnspacing=1.0  # Space between columns if multiple
     )
     legend.get_frame().set_linewidth(0)
