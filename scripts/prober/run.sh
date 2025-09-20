@@ -23,6 +23,16 @@ python3 scripts/prober/generate_prober_scripts.py \
     --layer_index 48
 
 python3 scripts/prober/generate_prober_scripts.py \
-    --model_dir_name "DeepSeek-R1-Distill-Qwen-14B" \
-    --model_path "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B" \
-    --layer_index 48
+    --model_dir_name "Phi-4-mini-reasoning" \
+    --model_path "microsoft/Phi-4-mini-reasoning" \
+    --layer_index 32
+
+python3 scripts/prober/generate_prober_scripts.py \
+    --model_dir_name "RealSafe-R1-8B" \
+    --model_path "RealSafe/RealSafe-R1-8B" \
+    --layer_index 32
+
+python3 scripts/prober/generate_prober_scripts.py \
+    --model_dir_name "RealSafe-R1-7B" \
+    --model_path "RealSafe/RealSafe-R1-7B" \
+    --layer_index 28
