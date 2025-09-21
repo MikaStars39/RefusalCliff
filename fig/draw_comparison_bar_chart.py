@@ -33,143 +33,101 @@ plt.rcParams.update({
 })
 
 def plot_comparison_bar_chart(
-    data: Dict[str, Tuple[float, float]],  # model_name: (before_value, after_value)
+    data: Dict[str, Tuple[float, ...]],  # model_name: (value1, value2, value3, ...)
     save_path: Optional[str] = None,
     title: str = "Model Performance Comparison",
-    xlabel: str = "Models",
+    xlabel: str = "",
     ylabel: str = "Values",
     figsize: tuple = (10, 6),
-    bar_width: float = 0.35,
-    show_values: bool = True,
-    show_improvement: bool = True,
+    bar_width: float = 0.15,
+    group_spacing: float = 0.1,
+    legend_labels: Optional[List[str]] = None,
+    colors: Optional[List[str]] = None,
 ) -> None:
     """
-    Plot comparison bar chart with dual bars per model showing improvement.
+    Plot comparison bar chart with multiple bars per model grouped together.
     
     Args:
-        data: Dictionary with model names as keys and (before, after) tuples as values
+        data: Dictionary with model names as keys and tuples of values
         save_path: Optional path to save the plot
         title: Chart title
         xlabel: X-axis label
         ylabel: Y-axis label
         figsize: Figure size tuple
         bar_width: Width of individual bars
-        show_values: Whether to show values on top of bars
-        show_improvement: Whether to show improvement percentage above right bars
+        group_spacing: Spacing between model groups
+        legend_labels: Labels for legend (if None, uses "Condition 1", "Condition 2", etc.)
+        colors: List of colors for each condition (if None, uses default colors)
     """
     if not data:
         raise ValueError("Data must be provided")
     
     labels = list(data.keys())
-    before_values = [data[label][0] for label in labels]
-    after_values = [data[label][1] for label in labels]
+    # Get the number of values per model (all models should have the same number)
+    n_values = len(list(data.values())[0])
     
     # Create figure with academic styling
     fig, ax = plt.subplots(figsize=figsize)
     fig.patch.set_facecolor('white')  # White background for figure
-    ax.set_facecolor('#f8f8f8')  # Light gray background for plot area
+    ax.set_facecolor('white')  # White background for plot area
     
     # Add grid first so it appears behind bars
     ax.grid(True, alpha=0.3, linestyle='-', linewidth=0.5, color='#dddddd', axis='y', zorder=0)
     
-    # Create bar positions
-    x_pos = np.arange(len(labels))
+    # Define consistent colors for each condition (position in tuple)
+    if colors is None:
+        condition_colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f']
+    else:
+        condition_colors = colors
     
-    # Get retro colors from matplotlib's current color cycle
-    retro_colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+    # Create legend labels if not provided
+    if legend_labels is None:
+        legend_labels = [f'Condition {i+1}' for i in range(n_values)]
     
-    # Create bars with retro colors
-    bars_before = []
-    bars_after = []
+    # Calculate positions for grouped bars
+    n_models = len(labels)
+    total_width = n_values * bar_width
+    group_centers = np.arange(n_models) * (total_width + group_spacing)
     
-    for i in range(len(labels)):
-        # Use retro color with lighter alpha for before bars
-        color = retro_colors[i % len(retro_colors)]
-        
-        # Before bar (lighter)
-        bar_before = ax.bar(x_pos[i] - bar_width/2, before_values[i], 
-                           width=bar_width,
-                           color=color,
-                           alpha=0.4,  # Much lighter alpha for before bars
-                           edgecolor='none',
-                           zorder=3)
-        bars_before.extend(bar_before)
-        
-        # After bar (normal intensity)
-        bar_after = ax.bar(x_pos[i] + bar_width/2, after_values[i], 
-                          width=bar_width,
-                          color=color,
-                          alpha=0.85,  # Normal alpha for after bars
-                          edgecolor='none',
-                          zorder=3)
-        bars_after.extend(bar_after)
+    all_bars = []
     
-    # Add legend entries manually (since we created bars individually)
-    from matplotlib.patches import Patch
+    # Create bars for each condition
+    for condition_idx in range(n_values):
+        condition_bars = []
+        for model_idx, model_name in enumerate(labels):
+            value = data[model_name][condition_idx]
+            x_pos = group_centers[model_idx] + condition_idx * bar_width - total_width/2 + bar_width/2
+            
+            bar = ax.bar(x_pos, value, 
+                        width=bar_width,
+                        color=condition_colors[condition_idx % len(condition_colors)],
+                        alpha=0.85,
+                        edgecolor='none',
+                        zorder=3)
+            condition_bars.extend(bar)
+        all_bars.append(condition_bars)
+    
+    # Create legend entries with square markers
+    from matplotlib.patches import Rectangle
     legend_elements = [
-        Patch(facecolor='gray', alpha=0.4, label='Before'),
-        Patch(facecolor='gray', alpha=0.85, label='After')
+        Rectangle((0, 0), 1, 1, facecolor=condition_colors[i % len(condition_colors)], alpha=0.85, label=legend_labels[i])
+        for i in range(n_values)
     ]
     
-    # Add value labels on top of bars if requested
-    if show_values:
-        for i, (bar_before, bar_after, before_val, after_val) in enumerate(zip(bars_before, bars_after, before_values, after_values)):
-            # Label for before bar
-            height_before = bar_before.get_height()
-            ax.text(bar_before.get_x() + bar_before.get_width()/2., height_before + max(max(before_values), max(after_values)) * 0.01,
-                   f'{before_val*100:.1f}%' if before_val < 1 else f'{before_val:.1f}',
-                   ha='center', va='bottom',
-                   fontsize=9, color='#555555',
-                   fontweight='normal',
-                   zorder=5)
-            
-            # Label for after bar
-            height_after = bar_after.get_height()
-            ax.text(bar_after.get_x() + bar_after.get_width()/2., height_after + max(max(before_values), max(after_values)) * 0.01,
-                   f'{after_val*100:.1f}%' if after_val < 1 else f'{after_val:.1f}',
-                   ha='center', va='bottom',
-                   fontsize=9, color='#333333',
-                   fontweight='normal',
-                   zorder=5)
+    # Configure plot with strictly black text
+    if xlabel:  # Only set xlabel if not empty
+        ax.set_xlabel(xlabel, fontsize=10, fontweight='normal', color='black')
+    ax.set_ylabel(ylabel, fontsize=10, fontweight='normal', color='black')
+    ax.set_title(title, fontsize=12, fontweight='normal', color='black', pad=10)
     
-    # Add improvement percentage labels above right bars
-    if show_improvement:
-        for i, (bar_after, before_val, after_val) in enumerate(zip(bars_after, before_values, after_values)):
-            improvement = after_val - before_val
-            if improvement > 0:
-                if before_val < 1:  # Assume percentage values
-                    improvement_text = f'+{improvement*100:.1f}%'
-                else:
-                    improvement_text = f'+{improvement:.1f}'
-            else:
-                if before_val < 1:  # Assume percentage values
-                    improvement_text = f'-{improvement*100:.1f}%'
-                else:
-                    improvement_text = f'-{improvement:.1f}'
-            
-            height_after = bar_after.get_height()
-            ax.text(bar_after.get_x() + bar_after.get_width()/2., 
-                   height_after + max(max(before_values), max(after_values)) * 0.05,
-                   improvement_text,
-                   ha='center', va='bottom',
-                   fontsize=10, color='#d62728',  # Red color for improvement
-                   fontweight='bold',
-                   zorder=5)
+    # Set x-axis labels at group centers (horizontal, no rotation)
+    ax.set_xticks(group_centers)
+    ax.set_xticklabels(labels, rotation=0, ha='center', fontsize=10, color='black')
     
-    # Configure plot
-    ax.set_xlabel(xlabel, fontsize=10, fontweight='normal', color='#333333')
-    ax.set_ylabel(ylabel, fontsize=10, fontweight='normal', color='#333333')
-    ax.set_title(title, fontsize=12, fontweight='bold', color='#333333', pad=10)
-    
-    # Set x-axis labels
-    ax.set_xticks(x_pos)
-    ax.set_xticklabels(labels, rotation=20 if len(max(labels, key=len)) > 8 else 0, 
-                       ha='right' if len(max(labels, key=len)) > 8 else 'center',
-                       fontsize=10)
-    
-    # Set y-axis limits with some padding for improvement labels
-    max_val = max(max(before_values), max(after_values))
-    ax.set_ylim(0, max_val * 1.15)
+    # Set y-axis limits with some padding
+    all_values = [val for values in data.values() for val in values]
+    max_val = max(all_values)
+    ax.set_ylim(0, max_val * 1.1)
     
     # Format y-axis based on data range
     if max_val <= 1.0:  # Assume percentage values
@@ -178,22 +136,25 @@ def plot_comparison_bar_chart(
             return f'{x*100:.0f}%'
         ax.yaxis.set_major_formatter(FuncFormatter(percent_formatter))
     
-    # Configure legend
+    # Configure legend at bottom with no border
     legend = ax.legend(
         handles=legend_elements,
-        frameon=True,
-        fancybox=False,
-        edgecolor='#dddddd',
-        facecolor='#f8f8f8',
-        framealpha=0.9,
+        frameon=False,  # Remove frame/border
         fontsize=10,
-        loc='upper left'
+        loc='lower center',
+        bbox_to_anchor=(0.5, -0.18),  # Move up slightly
+        ncol=min(n_values, 4),  # Max 4 columns
+        handlelength=1.0,  # Make squares more compact
+        handletextpad=0.5,  # Reduce space between square and text
+        columnspacing=0.5  # Reduce space between columns
     )
-    legend.get_frame().set_linewidth(0.8)
+    # Set legend text to black
+    for text in legend.get_texts():
+        text.set_color('black')
     
-    # Customize ticks with light colors
+    # Customize ticks with black text
     ax.tick_params(axis='both', which='major', labelsize=10, width=0.8, 
-                   color='#cccccc', labelcolor='#666666')
+                   color='#cccccc', labelcolor='black')
     
     # Set light colored spines for all four sides
     ax.spines['left'].set_color('#cccccc')
@@ -205,8 +166,9 @@ def plot_comparison_bar_chart(
     ax.spines['top'].set_linewidth(0.8)
     ax.spines['right'].set_linewidth(0.8)
     
-    # Adjust layout
+    # Adjust layout to accommodate bottom legend
     plt.tight_layout()
+    plt.subplots_adjust(bottom=0.25)  # Adjust for legend position
     
     # Save plot if path provided
     if save_path:
@@ -237,10 +199,12 @@ def plot_comparison_from_json(
     with open(data_path, "r") as f:
         config = json.load(f)
     
-    data = config["data"]  # Dictionary with model_name: [before, after]
+    data = config["data"]  # Dictionary with model_name: [value1, value2, ...]
     title = config.get("title", "Model Performance Comparison")
-    xlabel = config.get("xlabel", "Models")
+    xlabel = config.get("xlabel", "")
     ylabel = config.get("ylabel", "Values")
+    legend_labels = config.get("legend_labels", None)
+    colors = config.get("colors", None)
     
     # Convert list format to tuple format
     formatted_data = {model: tuple(values) for model, values in data.items()}
@@ -251,17 +215,19 @@ def plot_comparison_from_json(
         title=title,
         xlabel=xlabel,
         ylabel=ylabel,
-        figsize=figsize
+        figsize=figsize,
+        legend_labels=legend_labels,
+        colors=colors
     )
 
 if __name__ == "__main__":
-    # Example data - each model has (before, after) values
+    # Example data - each model has multiple values
     data = {
-        "R1-Qwen-7B": (0.25, 0.52),
-        "R1-LLaMA-8B": (0.30, 0.88),
-        "R1-Qwen-14B": (0.10, 0.22),
-        "Hermes-14B": (0.20, 0.50),
-        "Skywork-OR1-7B": (0.15, 0.42)
+        "R1-Qwen-7B": (0.25, 0.52, 0.35),
+        "R1-LLaMA-8B": (0.30, 0.88, 0.65),
+        "R1-Qwen-14B": (0.10, 0.22, 0.18),
+        "Hermes-14B": (0.20, 0.50, 0.35),
+        "Skywork-OR1-7B": (0.15, 0.42, 0.28)
     }
     
     # Create output directory
@@ -273,5 +239,7 @@ if __name__ == "__main__":
         save_path="outputs/fig/model_comparison_improvement.pdf",
         title="Head Ablation",
         ylabel="Refusal Score",
-        figsize=(5, 4.5)
+        figsize=(8, 5),
+        legend_labels=["Before", "After", "Final"],
+        colors=["#3498db", "#e74c3c", "#2ecc71"]  # Custom colors: blue, red, green
     )

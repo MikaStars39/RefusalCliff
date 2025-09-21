@@ -19,7 +19,7 @@ plt.rcParams.update({
     'ytick.labelsize': 12,
     'legend.fontsize': 10,
     'figure.titlesize': 18,
-    'axes.facecolor': '#f8f8f8',  # Light gray background for plot area
+    'axes.facecolor': 'white',  # White background for plot area
     'figure.facecolor': 'white',  # White background for figure
     'savefig.facecolor': 'white',
     'savefig.edgecolor': 'none',
@@ -66,7 +66,7 @@ def plot_single_curve_with_references(
     # Create figure with styling
     fig, ax = plt.subplots(figsize=figsize)
     fig.patch.set_facecolor('white')  # White background for figure
-    ax.set_facecolor('#f8f8f8')  # Light gray background for plot area
+    ax.set_facecolor('white')  # White background for plot area
     
     # Handle different result formats
     if isinstance(results, dict):
@@ -97,26 +97,26 @@ def plot_single_curve_with_references(
     
     # Add circular markers at sampled positions
     ax.scatter(sample_positions, sample_values,
-             facecolor=main_color, edgecolor='black', s=25, 
-             linewidth=0.8, zorder=6, alpha=0.9)
+             facecolor=main_color, edgecolor='none', s=15, 
+             zorder=6, alpha=0.9)
     
     # Add horizontal reference lines
     ax.axhline(y=normal_refusal_score, color='#d62728', linestyle='--', 
-               linewidth=1.5, alpha=0.7, label='Normal Refusal Score')
+               linewidth=1.5, alpha=0.7, label='Normal Prompts')
     ax.axhline(y=safe_model_plateau, color='#2ca02c', linestyle='--', 
-               linewidth=1.5, alpha=0.7, label='Safe Model Plateau')
+               linewidth=1.5, alpha=0.7, label='Safe Plateau')
     
     # Configure plot styling
-    ax.set_title(title, fontsize=12, fontweight='normal', color='#333333', pad=10)
+    ax.set_title(title, fontsize=10, fontweight='normal', color='#333333', pad=10)
     ax.set_xlabel('Normalized Position', fontsize=10, fontweight='normal', color='#333333')
     ax.set_ylabel('Refusal Score', fontsize=10, fontweight='normal', color='#333333')
     
-    # Add grayer background for the last 5% of x-axis (right 5%)
-    ax.axvspan(95, 105, alpha=0.2, color='#c8c8c8', zorder=0)  # More subtle background
+    # Add grayer background for the last 10% of x-axis (right 10%)
+    ax.axvspan(90, 105, alpha=0.25, color='#d0d0d0', zorder=0)  # Darker gray background
     
     # Set axis limits and ticks
     ax.set_xlim(-5, 105)  # Start from -5 for better spacing
-    ax.set_ylim(-0.1, 0.75)
+    ax.set_ylim(-0.1, 0.85)
     
     # Customize ticks with light colors
     ax.tick_params(axis='both', which='major', labelsize=10, width=0.8, 
@@ -127,17 +127,19 @@ def plot_single_curve_with_references(
     # Add grid with subtle styling
     ax.grid(True, alpha=0.4, linestyle='-', linewidth=0.5, color='#dddddd')
     
-    # Configure legend with darker background, no border, and rounded corners
+    # Configure legend with white background, positioned outside on the right
     legend = ax.legend(
         frameon=True, 
         fancybox=True,  # Enable rounded corners
         edgecolor='none',  # No border
-        facecolor='#e8e8e8',  # Darker gray background
+        facecolor='white',  # White background
         framealpha=0.95,
         fontsize=8,
-        loc=(0.05, 0.60),  # Position away from top-left corner
+        bbox_to_anchor=(1.02, 0.5),  # Position outside the plot area on the right, vertically centered
+        loc='center left',  # Anchor point for the legend
         borderpad=1.0,  # Increase padding between text and legend border
-        handletextpad=0.8,  # Space between legend markers and text
+        handletextpad=0.5,  # Space between legend markers and text
+        handlelength=1.0,  # Length of legend lines (shorter)
         columnspacing=1.0  # Space between columns if multiple
     )
     legend.get_frame().set_linewidth(0)

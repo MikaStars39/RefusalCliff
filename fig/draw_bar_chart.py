@@ -335,10 +335,10 @@ if __name__ == "__main__":
         "Phi4-mini": "#FFB570",   # Retro Orange
         "QwQ-32B": "#EA6B66",     # Retro Red
         "Phi4":"#EA6B66",     # Retro Red
-        "Qwen3-4B": "#97D077",  # Retro Green
-        "Qwen3-30B": "#97D077",  # Retro Green
-        "Realsafe-7B": "#97D077",  # Retro Green
-        "Realsafe-8B": "#97D077",  # Retro Green
+        "Qwen3-4B": "#EA6B66",     # Retro Red
+        "Qwen3-30B": "#EA6B66",     # Retro Red
+        "Realsafe-7B": "#EA6B66",     # Retro Red
+        "Realsafe-8B": "#EA6B66",     # Retro Red
     }
     
     # Plot the bar chart using the data dictionary

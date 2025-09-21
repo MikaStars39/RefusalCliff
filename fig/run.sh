@@ -1,7 +1,7 @@
 
-python3 fig/draw_refusal_score.py \
+python3 fig/draw_layer_score.py \
     --pt_paths outputs/fig/layers.json \
-    --figsize "(4, 4)" \
+    --figsize "(3.6, 2.7)" \
     --save_path outputs/fig/layers_prober.pdf \
     --title "Layer-wise Refusal Score"
 
@@ -13,7 +13,7 @@ python3 fig/draw_refusal_score.py \
 
 python3 fig/draw_refusal_score.py \
     --pt_paths outputs/fig/pt/instruct_files.json \
-    --figsize "(5.4, 3.4)" \
+    --figsize "(5.4, 2.7)" \
     --save_path outputs/fig/instruct_prober.pdf \
     --title "Refusal Score of Safe Models"
 
@@ -35,7 +35,7 @@ python3 fig/draw_single_curve.py \
     --title="Comparison w/ Safe Model" \
     --normal_refusal_score=0.02 \
     --safe_model_plateau=0.6 \
-    --figsize "(4, 4)" \
+    --figsize "(5.4, 2.7)" \
     --curve_label="Refusal Score"
 
 python3 fig/draw_attention_heatmap.py plot \
