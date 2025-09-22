@@ -18,7 +18,7 @@ plt.rcParams.update({
     'ytick.labelsize': 12,
     'legend.fontsize': 10,
     'figure.titlesize': 18,
-    'axes.facecolor': '#f8f8f8',  # Light gray background for plot area
+    'axes.facecolor': 'white',  # White background for plot area
     'figure.facecolor': 'white',  # White background for figure
     'savefig.facecolor': 'white',
     'savefig.edgecolor': 'none',
@@ -33,11 +33,12 @@ plt.rcParams.update({
 def plot_flexible_curves(
     curves_data: Dict[str, Dict[str, List[float]]],
     save_path: Optional[str] = None,
-    figsize: tuple = (5.5, 3),
+    figsize: tuple = (5, 4),
     linewidth: float = 2.0,
     title: str = "Training Metrics Over Epochs",
     xlabel: str = "Training Data",
-    ylabel: str = "Attack Successful Rate"
+    ylabel: str = "Attack Successful Rate",
+    xlog: bool = False
 ) -> None:
     """
     Plot multiple curves with flexible naming.
@@ -50,6 +51,7 @@ def plot_flexible_curves(
         title: Plot title
         xlabel: X-axis label
         ylabel: Y-axis label
+        xlog: Whether to use logarithmic scale for x-axis
     """
     if not curves_data:
         raise ValueError("curves_data cannot be empty")
@@ -69,7 +71,7 @@ def plot_flexible_curves(
     # Create plot
     fig, ax = plt.subplots(figsize=figsize)
     fig.patch.set_facecolor('white')  # White background for figure
-    ax.set_facecolor('#f8f8f8')  # Light gray background for plot area
+    ax.set_facecolor('white')  # White background for plot area
     
     # Plot each curve
     markers = ['o', 's', '^', 'D', 'v', '<', '>', 'p', '*', 'h']
@@ -93,22 +95,29 @@ def plot_flexible_curves(
                 markeredgewidth=0.8)
     
     # Configure axes
-    ax.set_xlabel(xlabel, fontsize=12, fontweight='normal', color='#333333')
-    ax.set_ylabel(ylabel, fontsize=12, fontweight='normal', color='#333333')
+    ax.set_xlabel(xlabel, fontsize=12, fontweight='normal', color='black')
+    ax.set_ylabel(ylabel, fontsize=12, fontweight='normal', color='black')
     
     # Set axis limits and ticks
-    ax.set_xlim(-5, 105)  # X-axis from 0% to 100%
-    ax.set_xticks(np.arange(0, 101, 20))  # Ticks every 20%
+    if xlog:
+        ax.set_xscale('log')
+        # For log scale, adjust limits to avoid issues with zero values
+        x_min = min([min([x for x in data['x'] if x > 0]) for data in curves_data.values()])
+        x_max = max([max(data['x']) for data in curves_data.values()])
+        ax.set_xlim(x_min * 0.8, x_max * 1.2)
+    else:
+        ax.set_xlim(-5, 105)  # X-axis from 0% to 100%
+        ax.set_xticks(np.arange(0, 101, 20))  # Ticks every 20%
     
     # Set y-axis limits inverted (from 0.4 to -0.1, top to bottom)
-    ax.set_ylim(0.35, -0.05)
+    ax.set_ylim(0.40, -0.00)
     
     # Add grid
     ax.grid(True, alpha=0.4, linestyle='-', linewidth=0.5, color='#dddddd')
     
     # Customize ticks
     ax.tick_params(axis='both', which='major', labelsize=10, width=0.8, 
-                   color='#cccccc', labelcolor='#666666')
+                   color='#cccccc', labelcolor='black')
     
     # Set light colored spines
     ax.spines['left'].set_color('#cccccc')
@@ -124,7 +133,7 @@ def plot_flexible_curves(
     legend = ax.legend(frameon=True, 
                        fancybox=True,  # Enable rounded corners
                        edgecolor='none',  # No border
-                       facecolor='#e8e8e8',  # Darker gray background
+                       facecolor='white',  # White background
                        framealpha=0.95,
                        fontsize=9,
                        loc='lower right',
@@ -153,6 +162,7 @@ def main(
     title: str = "Training Metrics Over Epochs",
     xlabel: str = "Training Data",
     ylabel: str = "Attack Successful Rate",
+    xlog: bool = False,
     **kwargs
 ) -> None:
     """
@@ -163,6 +173,7 @@ def main(
         title: Plot title
         xlabel: X-axis label
         ylabel: Y-axis label
+        xlog: Whether to use logarithmic scale for x-axis
         **kwargs: Curve names as keys and comma-separated values as strings
     
     Example:
@@ -172,7 +183,8 @@ def main(
             --validation_loss_x="0,25,50,75,100" \
             --validation_loss_y="0.35,0.32,0.28,0.25,0.23" \
             --save_path="my_curves.pdf" \
-            --title="My Training Curves"
+            --title="My Training Curves" \
+            --xlog=True
     """
     # Helper function to parse input data
     def parse_input(data):
@@ -211,7 +223,8 @@ def main(
         # Provide example data if no curves specified
         print("No curve data provided. Using example data...")
         # Create example data with x values as percentages (0% to 100%)
-        x_values = [0, 5, 12.5, 25, 50, 100]  # Percentages
+        # Note: for log scale, avoid zero values
+        x_values = [1, 5, 12.5, 25, 50, 100]  # Percentages (starting from 1 for log compatibility)
         curves_data = {
             "Cliff-as-a-Judge": {
                 'x': x_values,
@@ -237,7 +250,8 @@ def main(
         save_path=save_path,
         title=title,
         xlabel=xlabel,
-        ylabel=ylabel
+        ylabel=ylabel,
+        xlog=xlog
     )
     
     # Show the plot

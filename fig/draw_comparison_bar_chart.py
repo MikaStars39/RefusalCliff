@@ -101,8 +101,9 @@ def plot_comparison_bar_chart(
             bar = ax.bar(x_pos, value, 
                         width=bar_width,
                         color=condition_colors[condition_idx % len(condition_colors)],
-                        alpha=0.85,
-                        edgecolor='none',
+                        alpha=0.95,  # Reduced transparency
+                        edgecolor='black',  # Black edges
+                        linewidth=0.8,  # Edge line width
                         zorder=3)
             condition_bars.extend(bar)
         all_bars.append(condition_bars)
@@ -110,7 +111,12 @@ def plot_comparison_bar_chart(
     # Create legend entries with square markers
     from matplotlib.patches import Rectangle
     legend_elements = [
-        Rectangle((0, 0), 1, 1, facecolor=condition_colors[i % len(condition_colors)], alpha=0.85, label=legend_labels[i])
+        Rectangle((0, 0), 1, 1, 
+                 facecolor=condition_colors[i % len(condition_colors)], 
+                 alpha=0.95,  # Match bar transparency
+                 edgecolor='black',  # Match bar edges
+                 linewidth=0.8,  # Match bar edge width
+                 label=legend_labels[i])
         for i in range(n_values)
     ]
     
@@ -127,7 +133,7 @@ def plot_comparison_bar_chart(
     # Set y-axis limits with some padding
     all_values = [val for values in data.values() for val in values]
     max_val = max(all_values)
-    ax.set_ylim(0, max_val * 1.1)
+    ax.set_ylim(0, 0.7)
     
     # Format y-axis based on data range
     if max_val <= 1.0:  # Assume percentage values
@@ -143,7 +149,7 @@ def plot_comparison_bar_chart(
         fontsize=10,
         loc='lower center',
         bbox_to_anchor=(0.5, -0.18),  # Move up slightly
-        ncol=min(n_values, 4),  # Max 4 columns
+        ncol=min(n_values, 5),  # Max 4 columns
         handlelength=1.0,  # Make squares more compact
         handletextpad=0.5,  # Reduce space between square and text
         columnspacing=0.5  # Reduce space between columns
@@ -168,7 +174,7 @@ def plot_comparison_bar_chart(
     
     # Adjust layout to accommodate bottom legend
     plt.tight_layout()
-    plt.subplots_adjust(bottom=0.25)  # Adjust for legend position
+    plt.subplots_adjust(bottom=-0.7)  # Adjust for legend position
     
     # Save plot if path provided
     if save_path:
@@ -223,12 +229,18 @@ def plot_comparison_from_json(
 if __name__ == "__main__":
     # Example data - each model has multiple values
     data = {
-        "R1-Qwen-7B": (0.25, 0.52, 0.35),
-        "R1-LLaMA-8B": (0.30, 0.88, 0.65),
-        "R1-Qwen-14B": (0.10, 0.22, 0.18),
-        "Hermes-14B": (0.20, 0.50, 0.35),
-        "Skywork-OR1-7B": (0.15, 0.42, 0.28)
+        "Baseline": (0.49, 0.4234, 0.3643, 0.4976, 0.4406),
+        "Top 3%": (0.542, 0.4893, 0.4008, 0.56, 0.50),
+        "Top 10%": (0.66, 0.5405, 0.5616, 0.63, 0.57),
+        "Random 10%": (0.4976, 0.4406, 0.29, 0.48, 0.43),
     }
+
+    # data = {
+    #     "Baseline": (0.34, 0.352, 0.19, 0.144, 0.154),
+    #     "Top 1%": (0.30, 0.31, 0.17, 0.13, 0.14),
+    #     "Top 3%": (0.16, 0.10, 0.09, 0.04, 0.02),
+    #     "Random 3%": (0.35, 0.34, 0.22, 0.17, 0.16),
+    # }
     
     # Create output directory
     os.makedirs("outputs/fig", exist_ok=True)
@@ -239,7 +251,7 @@ if __name__ == "__main__":
         save_path="outputs/fig/model_comparison_improvement.pdf",
         title="Head Ablation",
         ylabel="Refusal Score",
-        figsize=(8, 5),
-        legend_labels=["Before", "After", "Final"],
-        colors=["#3498db", "#e74c3c", "#2ecc71"]  # Custom colors: blue, red, green
+        figsize=(6, 2.0),
+        legend_labels=["R1-7B", "OR1-7B", "R1-8B", "R1-14B", "Hermes-14B"],
+        colors=["#97D077", "#7EA6E0", "#67AB9F", "#67AB9F", "#B5739D"]  # Custom colors: blue, red, green
     )

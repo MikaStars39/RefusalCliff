@@ -18,7 +18,7 @@ plt.rcParams.update({
     'ytick.labelsize': 12,
     'legend.fontsize': 10,
     'figure.titlesize': 18,
-    'axes.facecolor': '#f8f8f8',  # Light gray background for plot area
+    'axes.facecolor': 'white',  # White background for plot area
     'figure.facecolor': 'white',  # White background for figure
     'savefig.facecolor': 'white',
     'savefig.edgecolor': 'none',
@@ -34,8 +34,9 @@ def plot_attack_metrics(
     attack_success_rate: List[float],
     refusal_score: List[float],
     save_path: Optional[str] = None,
-    figsize: tuple = (4, 4),
-    linewidth: float = 2.0
+    figsize: tuple = (4, 3.5),
+    linewidth: float = 2.0,
+    title: str = "Attack Metrics Analysis"
 ) -> None:
     """
     Plot attack successful rate and refusal score curves.
@@ -46,6 +47,7 @@ def plot_attack_metrics(
         save_path: Optional path to save the plot
         figsize: Figure size tuple
         linewidth: Width of the plot lines
+        title: Plot title
     """
     # Validate input lengths
     data_points = len(attack_success_rate)
@@ -61,14 +63,14 @@ def plot_attack_metrics(
     # Create plot with dual y-axis
     fig, ax1 = plt.subplots(figsize=figsize)
     fig.patch.set_facecolor('white')  # White background for figure
-    ax1.set_facecolor('#f8f8f8')  # Light gray background for plot area
+    ax1.set_facecolor('white')  # White background for plot area
     
     # Create second y-axis
     ax2 = ax1.twinx()
     
     # Plot attack success rate on left y-axis (solid line)
     line1 = ax1.plot(percentages, attack_success_rate, 
-                     label='Attack Successful Rate (ASR)', 
+                     label='ASR', 
                      color=colors[0], 
                      linewidth=linewidth,
                      linestyle='-',  # solid line
@@ -94,7 +96,7 @@ def plot_attack_metrics(
     
     # Configure axes
     ax1.set_xlabel('Thinking Pruning', fontsize=10, fontweight='normal', color='#333333')
-    ax1.set_ylabel('Attack Successful Rate (ASR)', fontsize=10, fontweight='normal', color='#333333', labelpad=2)
+    ax1.set_ylabel('ASR', fontsize=10, fontweight='normal', color='#333333', labelpad=2)
     ax2.set_ylabel('Refusal Score', fontsize=10, fontweight='normal', color='#333333', labelpad=2)
     
     # Set x-axis limits and ticks (110% to -10% for padding)
@@ -134,7 +136,7 @@ def plot_attack_metrics(
                         frameon=True, 
                         fancybox=True,  # Enable rounded corners
                         edgecolor='none',  # No border
-                        facecolor='#e8e8e8',  # Darker gray background
+                        facecolor='white',  # White background
                         framealpha=0.95,
                         fontsize=8,
                         loc='upper left',
@@ -142,6 +144,9 @@ def plot_attack_metrics(
                         handletextpad=0.8,  # Space between legend markers and text
                         columnspacing=1.0)  # Space between columns if multiple
     legend.get_frame().set_linewidth(0)
+    
+    # Add title
+    fig.suptitle(title, fontsize=10, fontweight='normal', color='#333333', y=0.95)
     
     # Adjust layout
     plt.tight_layout()
@@ -159,7 +164,8 @@ def plot_attack_metrics(
 def main(
     attack_success_rate,
     refusal_score,
-    save_path: Optional[str] = None
+    save_path: Optional[str] = None,
+    title: str = "Attack Metrics Analysis"
 ) -> None:
     """
     Main function to parse input and create attack metrics plot.
@@ -168,11 +174,13 @@ def main(
         attack_success_rate: Comma-separated string or list of attack successful rate values
         refusal_score: Comma-separated string or list of refusal score values
         save_path: Optional path to save the plot
+        title: Plot title
     
     Example:
         python draw_attack_metrics.py main --attack_success_rate="0.15,0.13,0.11,0.10,0.09" \
                                            --refusal_score="0.75,0.67,0.59,0.50,0.41" \
-                                           --save_path="attack_metrics.pdf"
+                                           --save_path="attack_metrics.pdf" \
+                                           --title="Custom Attack Analysis"
     """
     # Helper function to parse input data
     def parse_input(data):
@@ -194,7 +202,8 @@ def main(
     plot_attack_metrics(
         attack_success_rate=attack_rate_list,
         refusal_score=refusal_score_list,
-        save_path=save_path
+        save_path=save_path,
+        title=title
     )
     
     # Show the plot

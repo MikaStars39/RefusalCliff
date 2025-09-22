@@ -107,9 +107,9 @@ def plot_single_curve_with_references(
                linewidth=1.5, alpha=0.7, label='Safe Plateau')
     
     # Configure plot styling
-    ax.set_title(title, fontsize=10, fontweight='normal', color='#333333', pad=10)
-    ax.set_xlabel('Normalized Position', fontsize=10, fontweight='normal', color='#333333')
-    ax.set_ylabel('Refusal Score', fontsize=10, fontweight='normal', color='#333333')
+    ax.set_title(title, fontsize=10, fontweight='normal', color='black', pad=10)
+    ax.set_xlabel('Normalized Position', fontsize=10, fontweight='normal', color='black')
+    ax.set_ylabel('Refusal Score', fontsize=10, fontweight='normal', color='black')
     
     # Add grayer background for the last 10% of x-axis (right 10%)
     ax.axvspan(90, 105, alpha=0.25, color='#d0d0d0', zorder=0)  # Darker gray background
@@ -120,14 +120,14 @@ def plot_single_curve_with_references(
     
     # Customize ticks with light colors
     ax.tick_params(axis='both', which='major', labelsize=10, width=0.8, 
-                   color='#cccccc', labelcolor='#666666')
+                   color='#cccccc', labelcolor='black')
     ax.set_xticks(np.arange(0, 105, 20))  # This will show 0, 20, 40, 60, 80, 100
     ax.set_yticks(np.arange(0, 1.0, 0.2))  # This will show 0.0, 0.2, 0.4, 0.6, 0.8
     
     # Add grid with subtle styling
     ax.grid(True, alpha=0.4, linestyle='-', linewidth=0.5, color='#dddddd')
     
-    # Configure legend with white background, positioned outside on the right
+    # Configure legend with white background, positioned in top-left corner
     legend = ax.legend(
         frameon=True, 
         fancybox=True,  # Enable rounded corners
@@ -135,8 +135,7 @@ def plot_single_curve_with_references(
         facecolor='white',  # White background
         framealpha=0.95,
         fontsize=8,
-        bbox_to_anchor=(1.02, 0.5),  # Position outside the plot area on the right, vertically centered
-        loc='center left',  # Anchor point for the legend
+        loc='upper left',  # Position in top-left corner
         borderpad=1.0,  # Increase padding between text and legend border
         handletextpad=0.5,  # Space between legend markers and text
         handlelength=1.0,  # Length of legend lines (shorter)

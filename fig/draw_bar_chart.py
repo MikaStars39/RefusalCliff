@@ -15,7 +15,7 @@ plt.rcParams.update({
     'font.serif': ['Georgia', 'Times New Roman', 'DejaVu Serif', 'Liberation Serif', 'serif'],
     'xtick.labelsize': 7,
     'ytick.labelsize': 12,
-    'axes.facecolor': '#f8f8f8',  # Light gray background for plot area
+    'axes.facecolor': 'white',  # White background for plot area
     'figure.facecolor': 'white',  # White background for figure
     'savefig.facecolor': 'white',
     'savefig.edgecolor': 'none',
@@ -64,7 +64,7 @@ def plot_bar_chart_from_dict(
     # Create figure with programmer styling
     fig, ax = plt.subplots(figsize=figsize)
     fig.patch.set_facecolor('white')  # White background for figure
-    ax.set_facecolor('#f8f8f8')  # Light gray background for plot area
+    ax.set_facecolor('white')  # White background for plot area
     
     # Add grid first so it appears behind bars
     ax.grid(True, alpha=0.3, linestyle='-', linewidth=0.5, color='#dddddd', axis='y', zorder=0)
@@ -100,13 +100,13 @@ def plot_bar_chart_from_dict(
             ax.text(bar.get_x() + bar.get_width()/2., height + 0.02,
                    f'{value*100:.1f}%',  # Convert to percentage format
                    ha='center', va='bottom',
-                   fontsize=8, color='#333333',
+                   fontsize=8, color='black',
                    fontweight='normal',
                    zorder=5)
     
     # Configure plot with programmer styling
-    ax.set_title(title, fontsize=10, fontweight='normal', color='#333333', pad=10)
-    ax.set_ylabel("Attack Successful Rate", fontsize=10, fontweight='normal', color='#333333', labelpad=0)
+    ax.set_title(title, fontsize=10, fontweight='normal', color='black', pad=10)
+    ax.set_ylabel("Attack Successful Rate", fontsize=10, fontweight='normal', color='black', labelpad=0)
     
     # Set x-axis labels
     ax.set_xticks(x_pos)
@@ -123,9 +123,9 @@ def plot_bar_chart_from_dict(
     
     # Customize ticks with light colors
     ax.tick_params(axis='x', which='major', labelsize=9, width=0.8, 
-                   color='#cccccc', labelcolor='#666666')
+                   color='#cccccc', labelcolor='black')
     ax.tick_params(axis='y', which='major', labelsize=7, width=0.8, 
-                   color='#cccccc', labelcolor='#666666')
+                   color='#cccccc', labelcolor='black')
     
     # Set light colored spines for all four sides
     ax.spines['left'].set_color('#cccccc')
@@ -194,7 +194,7 @@ def plot_grouped_bar_chart(
     # Create figure
     fig, ax = plt.subplots(figsize=figsize)
     fig.patch.set_facecolor('white')
-    ax.set_facecolor('#f8f8f8')
+    ax.set_facecolor('white')
     
     # Calculate positions
     x = np.arange(len(categories))
@@ -219,12 +219,12 @@ def plot_grouped_bar_chart(
                 ax.text(bar.get_x() + bar.get_width()/2., height + max(max(groups.values())) * 0.01,
                        f'{value:.2f}' if isinstance(value, float) else str(value),
                        ha='center', va='bottom',
-                       fontsize=7, color='#333333')
+                       fontsize=7, color='black')
     
     # Configure plot
-    ax.set_xlabel(xlabel, fontsize=10, fontweight='normal', color='#333333')
-    ax.set_ylabel(ylabel, fontsize=10, fontweight='normal', color='#333333')
-    ax.set_title(title, fontsize=10, fontweight='normal', color='#333333', pad=10)
+    ax.set_xlabel(xlabel, fontsize=10, fontweight='normal', color='black')
+    ax.set_ylabel(ylabel, fontsize=10, fontweight='normal', color='black')
+    ax.set_title(title, fontsize=10, fontweight='normal', color='black', pad=10)
     ax.set_xticks(x)
     ax.set_xticklabels(categories)
     
@@ -233,7 +233,7 @@ def plot_grouped_bar_chart(
         frameon=True,
         fancybox=False,
         edgecolor='#dddddd',
-        facecolor='#f8f8f8',
+        facecolor='white',
         framealpha=0.9,
         fontsize=10,
         loc='upper right'
@@ -242,9 +242,9 @@ def plot_grouped_bar_chart(
     
     # Styling
     ax.tick_params(axis='x', which='major', labelsize=7, width=0.8,
-                   color='#cccccc', labelcolor='#666666')
+                   color='#cccccc', labelcolor='black')
     ax.tick_params(axis='y', which='major', labelsize=10, width=0.8,
-                   color='#cccccc', labelcolor='#666666')
+                   color='#cccccc', labelcolor='black')
     ax.grid(True, alpha=0.4, linestyle='-', linewidth=0.5, color='#dddddd', axis='y')
     ax.spines['left'].set_color('#cccccc')
     ax.spines['bottom'].set_color('#cccccc')
@@ -327,18 +327,18 @@ if __name__ == "__main__":
     }
 
     custom_colors = {
-        "OR1-7B": "#EA6B66",     # Retro Red
-        "R1-7B": "#FFB570",   # Retro Orange
-        "R1-8B": "#FFB570",   # Retro Orange
-        "Hermes-14B": "#EA6B66",     # Retro Red
-        "R1-14B": "#FFB570",   # Retro Orange
-        "Phi4-mini": "#FFB570",   # Retro Orange
-        "QwQ-32B": "#EA6B66",     # Retro Red
-        "Phi4":"#EA6B66",     # Retro Red
-        "Qwen3-4B": "#EA6B66",     # Retro Red
-        "Qwen3-30B": "#EA6B66",     # Retro Red
-        "Realsafe-7B": "#EA6B66",     # Retro Red
-        "Realsafe-8B": "#EA6B66",     # Retro Red
+        "OR1-7B": "#7EA6E0",       # Retro Blue
+        "R1-7B": "#97D077",  # Retro Green
+        "R1-8B": "#97D077",  # Retro Green
+        "Hermes-14B": "#7EA6E0",       # Retro Blue
+        "R1-14B": "#97D077",  # Retro Green
+        "Phi4-mini": "#97D077",  # Retro Green
+        "QwQ-32B": "#7EA6E0",       # Retro Blue
+        "Phi4": "#7EA6E0",       # Retro Blue
+        "Qwen3-4B": "#7EA6E0",       # Retro Blue
+        "Qwen3-30B": "#7EA6E0",       # Retro Blue
+        "Realsafe-7B": "#7EA6E0",       # Retro Blue
+        "Realsafe-8B": "#7EA6E0",       # Retro Blue
     }
     
     # Plot the bar chart using the data dictionary

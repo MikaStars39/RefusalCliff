@@ -18,7 +18,7 @@ plt.rcParams.update({
     'ytick.labelsize': 12,
     'legend.fontsize': 10,
     'figure.titlesize': 18,
-    'axes.facecolor': '#f8f8f8',  # Light gray background for plot area
+    'axes.facecolor': 'white',  # White background for plot area
     'figure.facecolor': 'white',  # White background for figure
     'savefig.facecolor': 'white',
     'savefig.edgecolor': 'none',
@@ -35,7 +35,7 @@ def plot_validation_curves(
     val_loss: List[float],
     ood_val_accuracy: List[float],
     save_path: Optional[str] = None,
-    figsize: tuple = (5, 4),
+    figsize: tuple = (4, 3),
     linewidth: float = 2.0,
     title: str = "Validation Metrics Over Epochs"
 ) -> None:
@@ -65,7 +65,7 @@ def plot_validation_curves(
     # Create single plot
     fig, ax = plt.subplots(figsize=figsize)
     fig.patch.set_facecolor('white')  # White background for figure
-    ax.set_facecolor('#f8f8f8')  # Light gray background for plot area
+    ax.set_facecolor('white')  # White background for plot area
     
     # Create dual y-axis
     ax2 = ax.twinx()
@@ -84,7 +84,7 @@ def plot_validation_curves(
                     markeredgewidth=0.8)
     
     line2 = ax.plot(epoch_range, ood_val_accuracy, 
-                    label='OOD Validation Accuracy', 
+                    label='OOD Accuracy', 
                     color=colors[1], 
                     linewidth=linewidth,
                     linestyle='-',  # solid line
@@ -150,7 +150,7 @@ def plot_validation_curves(
                        frameon=True, 
                        fancybox=True,  # Enable rounded corners
                        edgecolor='none',  # No border
-                       facecolor='#e8e8e8',  # Darker gray background
+                       facecolor='white',  # White background
                        framealpha=0.95,
                        fontsize=8,
                        loc='center right',

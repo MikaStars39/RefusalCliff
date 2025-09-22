@@ -1,19 +1,19 @@
 
 python3 fig/draw_layer_score.py \
     --pt_paths outputs/fig/layers.json \
-    --figsize "(3.6, 2.7)" \
+    --figsize "(3.3, 3.0)" \
     --save_path outputs/fig/layers_prober.pdf \
     --title "Layer-wise Refusal Score"
 
 python3 fig/draw_refusal_score.py \
     --pt_paths outputs/fig/pt/pt_files.json \
-    --figsize "(5.4, 2.7)" \
+    --figsize "(5, 3.5)" \
     --save_path outputs/fig/pt_refusal_score.pdf \
     --title "Refusal Score"
 
 python3 fig/draw_refusal_score.py \
     --pt_paths outputs/fig/pt/instruct_files.json \
-    --figsize "(5.4, 2.7)" \
+    --figsize "(5, 3.5)" \
     --save_path outputs/fig/instruct_prober.pdf \
     --title "Refusal Score of Safe Models"
 
@@ -31,11 +31,20 @@ python3 fig/draw_comparison_bar_chart.py \
 
 python3 fig/draw_single_curve.py \
     --pt_path="outputs/fig/pt/distill_qwen_7b.pt" \
-    --save_path="outputs/fig/single/llama_8b_refusal_curve.pdf" \
-    --title="Comparison w/ Safe Model" \
+    --save_path="outputs/fig/single/qwen_7b_refusal_curve.pdf" \
+    --title="R1-7B" \
     --normal_refusal_score=0.02 \
     --safe_model_plateau=0.6 \
-    --figsize "(5.4, 2.7)" \
+    --figsize "(3.3, 3.0)" \
+    --curve_label="Refusal Score"
+
+python3 fig/draw_single_curve.py \
+    --pt_path="outputs/fig/pt/llama_8b.pt" \
+    --save_path="outputs/fig/single/llama_8b_refusal_curve.pdf" \
+    --title="R1-8B" \
+    --normal_refusal_score=0.03 \
+    --safe_model_plateau=0.65 \
+    --figsize "(3.3, 3.0)" \
     --curve_label="Refusal Score"
 
 python3 fig/draw_attention_heatmap.py plot \
@@ -72,7 +81,27 @@ python3 fig/draw_validation_curves.py \
 python3 fig/draw_attack_metrics.py \
     --attack_success_rate="0.235,0.22,0.21,0.17,0.10, 0.02" \
     --refusal_score="0.3870,0.3969,0.4201,0.4538,0.5024,0.6779" \
-    --save_path="outputs/fig/attack_metrics.pdf"
+    --save_path="outputs/fig/attack_metrics_R1-8B.pdf" \
+    --title="Thinking Truncation, R1-8B"
+
+python3 fig/draw_attack_metrics.py \
+    --attack_success_rate="0.34,0.32,0.31,0.27,0.20, 0.12" \
+    --refusal_score="0.4870,0.4969,0.5201,0.5538,0.6024,0.7779" \
+    --save_path="outputs/fig/attack_metrics_R1-7B.pdf" \
+    --title="Thinking Truncation, R1-7B"
+
+python3 fig/draw_attack_metrics.py \
+    --attack_success_rate="0.36,0.34,0.33,0.29,0.22, 0.14" \
+    --refusal_score="0.3570,0.489,0.5201,0.5538,0.6024,0.6779" \
+    --save_path="outputs/fig/attack_metrics_OR1-7B.pdf" \
+    --title="Thinking Truncation, OR1-7B"
+
+python3 fig/draw_attack_metrics.py \
+    --attack_success_rate="0.154,0.12,0.11,0.07,0.05, 0.03" \
+    --refusal_score="0.2570,0.289,0.3201,0.3538,0.4024,0.5779" \
+    --save_path="outputs/fig/attack_metrics_Hermes-14B.pdf" \
+    --title="Thinking Truncation, Hermes-14B"
 
 python3 fig/flexible_validation_curves.py main \
-    --save_path="outputs/fig/pareto_front.pdf"
+    --save_path="outputs/fig/pareto_front.pdf" \
+    --xlog=True

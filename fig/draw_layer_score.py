@@ -198,7 +198,7 @@ def plot_multiple_prober_results(
     # Add grid with subtle styling (this will include vertical line at 100)
     ax.grid(True, alpha=0.4, linestyle='-', linewidth=0.5, color='#dddddd')
     
-    # Configure legend with white background, positioned outside on the right
+    # Configure legend with white background, positioned in top-left corner
     legend = ax.legend(
         frameon=True, 
         fancybox=True,  # Enable rounded corners
@@ -206,8 +206,7 @@ def plot_multiple_prober_results(
         facecolor='white',  # White background
         framealpha=0.95,
         fontsize=8,
-        bbox_to_anchor=(1.02, 0.5),  # Position outside the plot area on the right, vertically centered
-        loc='center left',  # Anchor point for the legend
+        loc='upper left',  # Position in top-left corner
         borderpad=1.0,  # Increase padding between text and legend border
         handletextpad=0.5,  # Space between legend markers and text
         handlelength=1.0,  # Length of legend lines (shorter)
