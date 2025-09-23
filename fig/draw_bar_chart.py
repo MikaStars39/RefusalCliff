@@ -19,12 +19,14 @@ plt.rcParams.update({
     'figure.facecolor': 'white',  # White background for figure
     'savefig.facecolor': 'white',
     'savefig.edgecolor': 'none',
-    'axes.spines.top': True,  # Show top spine
-    'axes.spines.right': True,  # Show right spine
+    'axes.spines.top': False,  # Hide top spine
+    'axes.spines.right': False,  # Hide right spine
     'xtick.direction': 'out',  # Ticks point outward
     'ytick.direction': 'out',  # Ticks point outward
     'xtick.minor.visible': False,  # Hide minor x ticks
     'ytick.minor.visible': False,  # Hide minor y ticks
+    'xtick.top': False,  # Hide top x ticks
+    'ytick.right': False,  # Hide right y ticks
 })
 
 def plot_bar_chart_from_dict(
@@ -67,7 +69,7 @@ def plot_bar_chart_from_dict(
     ax.set_facecolor('white')  # White background for plot area
     
     # Add grid first so it appears behind bars
-    ax.grid(True, alpha=0.3, linestyle='-', linewidth=0.5, color='#dddddd', axis='y', zorder=0)
+    ax.grid(True, alpha=0.5, linestyle='-', linewidth=0.5, color='#dddddd', axis='y', zorder=0)
     
     # Create bar positions with reduced spacing
     x_pos = np.arange(len(labels)) * 0.5 # Reduce spacing between bars
@@ -88,8 +90,8 @@ def plot_bar_chart_from_dict(
     bars = ax.bar(x_pos, values, 
                   width=bar_width,
                   color=bar_colors,
-                  alpha=0.85,
-                  edgecolor='#888888',
+                  alpha=1,
+                  edgecolor='black',
                   linewidth=0.8,
                   zorder=3)
     
@@ -113,7 +115,7 @@ def plot_bar_chart_from_dict(
     ax.set_xticklabels(labels, rotation=20, ha='right')  # Font size controlled by rcParams
     
     # Set y-axis limits to 0-100% (0.0-1.0 in decimal)
-    ax.set_ylim(0, 0.8)
+    ax.set_ylim(0, 0.6)
     
     # Format y-axis as percentages
     from matplotlib.ticker import FuncFormatter
@@ -121,21 +123,19 @@ def plot_bar_chart_from_dict(
         return f'{x*100:.0f}%'
     ax.yaxis.set_major_formatter(FuncFormatter(percent_formatter))
     
-    # Customize ticks with light colors
+    # Customize ticks with black colors
     ax.tick_params(axis='x', which='major', labelsize=9, width=0.8, 
-                   color='#cccccc', labelcolor='black')
+                   color='black', labelcolor='black', top=False)
     ax.tick_params(axis='y', which='major', labelsize=7, width=0.8, 
-                   color='#cccccc', labelcolor='black')
+                   color='black', labelcolor='black', right=False)
     
-    # Set light colored spines for all four sides
-    ax.spines['left'].set_color('#cccccc')
-    ax.spines['bottom'].set_color('#cccccc')
-    ax.spines['top'].set_color('#cccccc')
-    ax.spines['right'].set_color('#cccccc')
+    # Set black spines for left and bottom, hide top and right
+    ax.spines['left'].set_color('black')
+    ax.spines['bottom'].set_color('black')
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
     ax.spines['left'].set_linewidth(0.8)
     ax.spines['bottom'].set_linewidth(0.8)
-    ax.spines['top'].set_linewidth(0.8)
-    ax.spines['right'].set_linewidth(0.8)
     
     # Adjust layout
     plt.tight_layout()
@@ -209,7 +209,7 @@ def plot_grouped_bar_chart(
                      label=group_name,
                      color=colors[i % len(colors)],
                      alpha=0.8,
-                     edgecolor='white',
+                     edgecolor='black',
                      linewidth=1.0)
         
         # Add value labels if requested
@@ -242,18 +242,16 @@ def plot_grouped_bar_chart(
     
     # Styling
     ax.tick_params(axis='x', which='major', labelsize=7, width=0.8,
-                   color='#cccccc', labelcolor='black')
+                   color='black', labelcolor='black', top=False)
     ax.tick_params(axis='y', which='major', labelsize=10, width=0.8,
-                   color='#cccccc', labelcolor='black')
+                   color='black', labelcolor='black', right=False)
     ax.grid(True, alpha=0.4, linestyle='-', linewidth=0.5, color='#dddddd', axis='y')
-    ax.spines['left'].set_color('#cccccc')
-    ax.spines['bottom'].set_color('#cccccc')
-    ax.spines['top'].set_color('#cccccc')
-    ax.spines['right'].set_color('#cccccc')
+    ax.spines['left'].set_color('black')
+    ax.spines['bottom'].set_color('black')
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
     ax.spines['left'].set_linewidth(0.8)
     ax.spines['bottom'].set_linewidth(0.8)
-    ax.spines['top'].set_linewidth(0.8)
-    ax.spines['right'].set_linewidth(0.8)
     
     plt.tight_layout()
     
@@ -287,20 +285,20 @@ if __name__ == "__main__":
         # "Qwen2.5-7B": missing in all.sh, skip
     }
 
-    data = {
-        "R1-8B": 0.329,
-        "R1-7B": 0.396,
-        "Hermes-14B": 0.36,
-        "OR1-7B": 0.38,
-        "R1-14B": 0.44,
-        "QwQ-32B": 0.16,
-        "Qwen3-4B": 0.015,
-        "Qwen3-30B": 0.025,
-        "Phi4": 0.015,
-        "Phi4-mini": 0.175,                   # Phi-4-mini-reasoning
-        "Realsafe-7B": 0.0,                   # RealSafe-R1-7B
-        "Realsafe-8B": 0.0,                   # RealSafe-R1-8B
-    }
+    # data = {
+    #     "OR1-7B": 0.23,            # Skywork-OR1-7B
+    #     "R1-7B": 0.01,             # RealSafe-R1-7B
+    #     "R1-8B": 0.005,            # RealSafe-R1-8B
+    #     "Hermes-14B": 0.155,       # Hermes-4-14B
+    #     "R1-14B": 0.175,           # DeepSeek-R1-Distill-Qwen-14B
+    #     "Phi4-mini": 0.23,         # Phi-4-mini-reasoning
+    #     "Phi4": 0.11,              # Phi-4-reasoning
+    #     "QwQ-32B": 0.105,          # QwQ-32B
+    #     "Qwen3-4B": 0.035,         # Qwen3-4B-Thinking-2507
+    #     "Qwen3-30B": 0.0195,       # Not in all.sh, using Qwen3-4B as proxy
+    #     "Realsafe-7B": 0.01,       # RealSafe-R1-7B
+    #     "Realsafe-8B": 0.005,      # RealSafe-R1-8B
+    # }
 
     # rank by ASR rate
     data = dict(sorted(data.items(), key=lambda x: x[1], reverse=True))
@@ -327,25 +325,25 @@ if __name__ == "__main__":
     }
 
     custom_colors = {
-        "OR1-7B": "#7EA6E0",       # Retro Blue
-        "R1-7B": "#97D077",  # Retro Green
-        "R1-8B": "#97D077",  # Retro Green
-        "Hermes-14B": "#7EA6E0",       # Retro Blue
-        "R1-14B": "#97D077",  # Retro Green
-        "Phi4-mini": "#97D077",  # Retro Green
-        "QwQ-32B": "#7EA6E0",       # Retro Blue
-        "Phi4": "#7EA6E0",       # Retro Blue
-        "Qwen3-4B": "#7EA6E0",       # Retro Blue
-        "Qwen3-30B": "#7EA6E0",       # Retro Blue
-        "Realsafe-7B": "#7EA6E0",       # Retro Blue
-        "Realsafe-8B": "#7EA6E0",       # Retro Blue
+        "OR1-7B": "#FF99CC",       # Retro Blue
+        "R1-7B": "#CCCCCC",  # Retro CCCCCC
+        "R1-8B": "#CCCCCC",  # Retro CCCCCC
+        "Hermes-14B": "#FF99CC",       # Retro Blue
+        "R1-14B": "#CCCCCC",  # Retro CCCCCC
+        "Phi4-mini": "#CCCCCC",  # Retro CCCCCC
+        "QwQ-32B": "#FF99CC",       # Retro Blue
+        "Phi4": "#FF99CC",       # Retro Blue
+        "Qwen3-4B": "#FF99CC",       # Retro Blue
+        "Qwen3-30B": "#FF99CC",       # Retro Blue
+        "Realsafe-7B": "#FF99CC",       # Retro Blue
+        "Realsafe-8B": "#FF99CC",       # Retro Blue
     }
     
     # Plot the bar chart using the data dictionary
     plot_bar_chart_from_dict(
         data=data,
-        save_path="outputs/fig/model_comparison_wj.pdf",
+        save_path="outputs/fig/model_comparison.pdf",
         figsize=(6, 3),
-        title="WildJailbreak",
+        title="Advbench",
         colors=custom_colors,  # Pass custom colors
     ) 

@@ -101,7 +101,7 @@ def plot_comparison_bar_chart(
             bar = ax.bar(x_pos, value, 
                         width=bar_width,
                         color=condition_colors[condition_idx % len(condition_colors)],
-                        alpha=0.95,  # Reduced transparency
+                        alpha=0.5,  # No transparency
                         edgecolor='black',  # Black edges
                         linewidth=0.8,  # Edge line width
                         zorder=3)
@@ -113,7 +113,7 @@ def plot_comparison_bar_chart(
     legend_elements = [
         Rectangle((0, 0), 1, 1, 
                  facecolor=condition_colors[i % len(condition_colors)], 
-                 alpha=0.95,  # Match bar transparency
+                 alpha=0.5,  # Match bar transparency
                  edgecolor='black',  # Match bar edges
                  linewidth=0.8,  # Match bar edge width
                  label=legend_labels[i])
@@ -148,7 +148,7 @@ def plot_comparison_bar_chart(
         frameon=False,  # Remove frame/border
         fontsize=10,
         loc='lower center',
-        bbox_to_anchor=(0.5, -0.18),  # Move up slightly
+        bbox_to_anchor=(0.5, -0.3),  # Move up slightly
         ncol=min(n_values, 5),  # Max 4 columns
         handlelength=1.0,  # Make squares more compact
         handletextpad=0.5,  # Reduce space between square and text
@@ -174,7 +174,6 @@ def plot_comparison_bar_chart(
     
     # Adjust layout to accommodate bottom legend
     plt.tight_layout()
-    plt.subplots_adjust(bottom=-0.7)  # Adjust for legend position
     
     # Save plot if path provided
     if save_path:
@@ -251,7 +250,7 @@ if __name__ == "__main__":
         save_path="outputs/fig/model_comparison_improvement.pdf",
         title="Head Ablation",
         ylabel="Refusal Score",
-        figsize=(6, 2.0),
+        figsize=(6, 3.2),
         legend_labels=["R1-7B", "OR1-7B", "R1-8B", "R1-14B", "Hermes-14B"],
         colors=["#97D077", "#7EA6E0", "#67AB9F", "#67AB9F", "#B5739D"]  # Custom colors: blue, red, green
     )

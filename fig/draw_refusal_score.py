@@ -24,8 +24,8 @@ plt.rcParams.update({
     'figure.facecolor': 'white',  # White background for figure
     'savefig.facecolor': 'white',
     'savefig.edgecolor': 'none',
-    'axes.spines.top': True,  # Show top spine
-    'axes.spines.right': True,  # Show right spine
+    'axes.spines.top': False,  # Hide top spine
+    'axes.spines.right': False,  # Hide right spine
     'xtick.direction': 'out',  # Ticks point outward
     'ytick.direction': 'out',  # Ticks point outward
     'xtick.minor.visible': False,  # Hide minor x ticks
@@ -164,27 +164,27 @@ def plot_multiple_prober_results(
     ax.set_xlabel('Normalized Position', fontsize=10, fontweight='normal', color='black')
     ax.set_ylabel('Refusal Score', fontsize=10, fontweight='normal', color='black')
     
-    # Add grayer background for the last 10% of x-axis (right 10%)
-    ax.axvspan(90, 105, alpha=0.25, color='#d0d0d0', zorder=0)  # Darker gray background
+    # Add background for x-axis from 95 to 105
+    ax.axvspan(95, 105, alpha=0.5, color='#FFF0E6', zorder=0)  # Light orange background
     
     # Set axis limits and ticks
     ax.set_xlim(-5, 105)  # Start from -5 for better spacing
-    ax.set_ylim(-0.1, 0.85)
+    ax.set_ylim(0, 1)
     
     # Customize ticks with black labels
     ax.tick_params(axis='both', which='major', labelsize=10, width=0.8, 
-                   color='#cccccc', labelcolor='black')
+                   color='black', labelcolor='black')
     ax.set_xticks(np.arange(0, 105, 20))  # This will show 0, 20, 40, 60, 80, 100
     ax.set_yticks(np.arange(0, 1.0, 0.2))  # This will show 0.0, 0.2, 0.4, 0.6, 0.8
     
     # Add grid with subtle styling (this will include vertical line at 100)
-    ax.grid(True, alpha=0.4, linestyle='-', linewidth=0.5, color='#dddddd')
+    ax.grid(True, alpha=0.4, linestyle='-', linewidth=0.5, color='black')
     
     # Configure legend with white background, positioned in the upper left corner
     legend = ax.legend(
         frameon=True, 
         fancybox=True,  # Enable rounded corners
-        edgecolor='none',  # No border
+        edgecolor='black',  # Black border
         facecolor='white',  # White background
         framealpha=0.95,
         fontsize=8,  # Smaller font size
@@ -195,17 +195,15 @@ def plot_multiple_prober_results(
         handlelength=1.0,  # Length of legend lines (shorter)
         columnspacing=1.0  # Space between columns if multiple
     )
-    legend.get_frame().set_linewidth(0)
+    legend.get_frame().set_linewidth(1.0)
     
-    # Set light colored spines for all four sides
-    ax.spines['left'].set_color('#cccccc')
-    ax.spines['bottom'].set_color('#cccccc')
-    ax.spines['top'].set_color('#cccccc')
-    ax.spines['right'].set_color('#cccccc')
+    # Set black colored spines for left and bottom only
+    ax.spines['left'].set_color('black')
+    ax.spines['bottom'].set_color('black')
+    ax.spines['top'].set_visible(False)  # Hide top spine
+    ax.spines['right'].set_visible(False)  # Hide right spine
     ax.spines['left'].set_linewidth(0.8)
     ax.spines['bottom'].set_linewidth(0.8)
-    ax.spines['top'].set_linewidth(0.8)
-    ax.spines['right'].set_linewidth(0.8)
     
     # Adjust layout
     plt.tight_layout()

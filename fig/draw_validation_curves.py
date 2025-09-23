@@ -109,9 +109,9 @@ def plot_validation_curves(
                      markeredgewidth=0.8)
     
     # Configure axes
-    ax.set_xlabel('Epoch', fontsize=10, fontweight='normal', color='#333333')
-    ax.set_ylabel('Accuracy', fontsize=10, fontweight='normal', color='#333333')
-    ax2.set_ylabel('Loss', fontsize=10, fontweight='normal', color='#333333')
+    ax.set_xlabel('Epoch', fontsize=10, fontweight='normal', color='black')
+    ax.set_ylabel('Accuracy', fontsize=10, fontweight='normal', color='black')
+    ax2.set_ylabel('Loss', fontsize=10, fontweight='normal', color='black')
     
     # Set axis limits and ticks
     ax.set_xlim(-0.5, epochs - 0.5)
@@ -128,16 +128,16 @@ def plot_validation_curves(
     
     # Customize ticks
     ax.tick_params(axis='both', which='major', labelsize=10, width=0.8, 
-                   color='#cccccc', labelcolor='#666666')
+                   color='black', labelcolor='black')
     ax2.tick_params(axis='y', which='major', labelsize=10, width=0.8, 
-                    color='#cccccc', labelcolor='#666666')
+                    color='black', labelcolor='black')
     
-    # Set light colored spines
+    # Set black colored spines
     for spine_ax in [ax, ax2]:
-        spine_ax.spines['left'].set_color('#cccccc')
-        spine_ax.spines['bottom'].set_color('#cccccc')
-        spine_ax.spines['top'].set_color('#cccccc')
-        spine_ax.spines['right'].set_color('#cccccc')
+        spine_ax.spines['left'].set_color('black')
+        spine_ax.spines['bottom'].set_color('black')
+        spine_ax.spines['top'].set_color('black')
+        spine_ax.spines['right'].set_color('black')
         spine_ax.spines['left'].set_linewidth(0.8)
         spine_ax.spines['bottom'].set_linewidth(0.8)
         spine_ax.spines['top'].set_linewidth(0.8)
@@ -160,7 +160,7 @@ def plot_validation_curves(
     legend.get_frame().set_linewidth(0)
     
     # Add title with smaller, non-bold font
-    ax.set_title(title, fontsize=10, fontweight='normal', color='#333333', pad=15)
+    ax.set_title(title, fontsize=10, fontweight='normal', color='black', pad=15)
     
     # Adjust layout
     plt.tight_layout()

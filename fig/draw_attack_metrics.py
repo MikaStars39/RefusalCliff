@@ -22,8 +22,8 @@ plt.rcParams.update({
     'figure.facecolor': 'white',  # White background for figure
     'savefig.facecolor': 'white',
     'savefig.edgecolor': 'none',
-    'axes.spines.top': True,  # Show top spine
-    'axes.spines.right': True,  # Show right spine
+    'axes.spines.top': False,  # Hide top spine
+    'axes.spines.right': False,  # Hide right spine
     'xtick.direction': 'out',  # Ticks point outward
     'ytick.direction': 'out',  # Ticks point outward
     'xtick.minor.visible': False,  # Hide minor x ticks
@@ -105,9 +105,9 @@ def plot_attack_metrics(
     ax1.set_xticks(x_ticks)
     ax1.set_xticklabels([f'{int(x)}%' for x in x_ticks])
     
-    # Set y-axis limits (-0.1 to 0.8) for both axes
-    ax1.set_ylim(-0.1, 0.8)
-    ax2.set_ylim(-0.1, 0.8)
+    # Set y-axis limits (0 to 1.0) for both axes
+    ax1.set_ylim(0, 1.0)
+    ax2.set_ylim(0, 1.0)
     
     # Add grid
     ax1.grid(True, alpha=0.4, linestyle='-', linewidth=0.5, color='#dddddd')
@@ -118,16 +118,12 @@ def plot_attack_metrics(
     ax2.tick_params(axis='y', which='major', labelsize=10, width=0.8, 
                     color='#cccccc', labelcolor='#666666')
     
-    # Set light colored spines
+    # Set black colored spines for left and bottom only (top and right are already hidden)
     for spine_ax in [ax1, ax2]:
-        spine_ax.spines['left'].set_color('#cccccc')
-        spine_ax.spines['bottom'].set_color('#cccccc')
-        spine_ax.spines['top'].set_color('#cccccc')
-        spine_ax.spines['right'].set_color('#cccccc')
+        spine_ax.spines['left'].set_color('black')
+        spine_ax.spines['bottom'].set_color('black')
         spine_ax.spines['left'].set_linewidth(0.8)
         spine_ax.spines['bottom'].set_linewidth(0.8)
-        spine_ax.spines['top'].set_linewidth(0.8)
-        spine_ax.spines['right'].set_linewidth(0.8)
     
     # Create combined legend in upper left
     lines = line1 + line2

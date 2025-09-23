@@ -3,7 +3,13 @@ python3 fig/draw_layer_score.py \
     --pt_paths outputs/fig/layers.json \
     --figsize "(3.3, 3.0)" \
     --save_path outputs/fig/layers_prober.pdf \
-    --title "Layer-wise Refusal Score"
+    --title "Layer-wise Refusal Score, R1-7B"
+
+python3 fig/draw_layer_score.py \
+    --pt_paths outputs/fig/layers_8b.json \
+    --figsize "(3.3, 3.0)" \
+    --save_path outputs/fig/layers_prober_8b.pdf \
+    --title "Layer-wise Refusal Score, R1-8B"
 
 python3 fig/draw_refusal_score.py \
     --pt_paths outputs/fig/pt/pt_files.json \
@@ -25,7 +31,7 @@ python3 fig/draw_bar_chart.py \
 
 python3 fig/draw_comparison_bar_chart.py \
     --data_path outputs/fig/bar_data.json \
-    --figsize "(4.5, 3.8)" \
+    --figsize "(4.5, 3.2)" \
     --title "Head Ablation" \
     --save_path outputs/fig/model_comparison_improvement.pdf
 
