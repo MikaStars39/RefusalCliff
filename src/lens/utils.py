@@ -14,8 +14,10 @@ def enable_appropriate_monkey_patch(model, model_name_or_path: str = None):
     config_name = model.config.__class__.__name__.lower()
     if 'llama' in config_name.lower():
         model_type = 'llama'
+        print(f"Warning: Llama model type detected")
     elif 'qwen' in config_name.lower() or "Skywork-OR1-7B" in config_name or "QwQ" in config_name:
         model_type = 'qwen'
+        print(f"Warning: Qwen model type detected")
     else:
         model_type = 'unknown'
     
@@ -195,7 +197,6 @@ def batch_gen(
                 
                 batch_text.append(full_text)
             else:
-                print("No thinking for this item")
                 thinking_positions.append(None)  # No thinking for this item
                 batch_text.append(base_text)
         

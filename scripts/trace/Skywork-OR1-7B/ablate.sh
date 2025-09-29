@@ -1,28 +1,3 @@
-CUDA_VISIBLE_DEVICES=2,3 python3 run.py ablating_head_generation \
-    --model_name Skywork/Skywork-OR1-7B \
-    --json_path outputs/refusal/Skywork-OR1-7B/jbbench.json \
-    --batch_size 8 \
-    --truncate_num 200 \
-    --top_n_ablation 16 \
-    --save_path outputs/refusal/Skywork-OR1-7B/ablating_outputs.json \
-    --max_new_tokens 4096 \
-    --temperature 0.7 \
-    --do_sample True \
-    --item_type "original_item" \
-    --thinking_portion 0 \
-    --head_ablation_path outputs/refusal/Skywork-OR1-7B/refusal_suppression_heads.json
-
-CUDA_VISIBLE_DEVICES=0,1 python3 run.py ablating_head_prober \
-    --model_name Skywork/Skywork-OR1-7B \
-    --json_path outputs/refusal/Skywork-OR1-7B/ultrachat.json \
-    --batch_size 16 \
-    --truncate_num 200 \
-    --top_n_ablation 0 \
-    --item_type "original_item" \
-    --thinking_portion 0 \
-    --head_ablation_path outputs/refusal/Skywork-OR1-7B/refusal_suppression_heads.json \
-    --prober_path outputs/refusal/Skywork-OR1-7B/linear_prober.pt
-
 CUDA_VISIBLE_DEVICES=0 python3 run.py test_prober \
     --json_path outputs/refusal/Skywork-OR1-7B/jbbench.json \
     --ckpt_path outputs/refusal/Skywork-OR1-7B/linear_prober.pt \
@@ -32,5 +7,167 @@ CUDA_VISIBLE_DEVICES=0 python3 run.py test_prober \
     --thinking_portion 0 \
     --item_type "original_item" \
     --head_ablation_path outputs/refusal/Skywork-OR1-7B/refusal_suppression_heads.json \
-    --top_n_ablation 128 \
-    --enhance True
+    --top_n_ablation 32 \
+    --enhance True \
+    --random_heads True
+
+CUDA_VISIBLE_DEVICES=3 python3 run.py ablating_head_generation \
+    --model_name Skywork/Skywork-OR1-7B \
+    --json_path outputs/refusal/Skywork-OR1-7B/jbbench.json \
+    --batch_size 8 \
+    --truncate_num 200 \
+    --top_n_ablation 12 \
+    --save_path outputs/refusal/Skywork-OR1-7B/ablating_outputs_0015.json \
+    --max_new_tokens 4096 \
+    --temperature 0.7 \
+    --do_sample True \
+    --item_type "original_item" \
+    --thinking_portion 0 \
+    --head_ablation_path outputs/refusal/Skywork-OR1-7B/refusal_suppression_heads.json
+
+python3 run.py api_inference \
+    --json_file="outputs/refusal/Skywork-OR1-7B/ablating_outputs_0015.json" \
+    --output_file="outputs/refusal/Skywork-OR1-7B/ablating_outputs_0015.json" \
+    --base_url="http://0.0.0.0:8001/v1" \
+    --api_key="123" \
+    --model="unsloth/Llama-Guard-4-12B" \
+    --max_tokens=16 \
+    --temperature=0.7 \
+    --request_time=0.0 \
+    --truncated_num=40000 \
+    --max_concurrent=1000 \
+    --generation_mode "eval" \
+    --max_retries=5
+
+CUDA_VISIBLE_DEVICES=3 python3 run.py ablating_head_generation \
+    --model_name Skywork/Skywork-OR1-7B \
+    --json_path outputs/refusal/Skywork-OR1-7B/jbbench.json \
+    --batch_size 8 \
+    --truncate_num 200 \
+    --top_n_ablation 24 \
+    --save_path outputs/refusal/Skywork-OR1-7B/ablating_outputs_003.json \
+    --max_new_tokens 4096 \
+    --temperature 0.7 \
+    --do_sample True \
+    --item_type "original_item" \
+    --thinking_portion 0 \
+    --head_ablation_path outputs/refusal/Skywork-OR1-7B/refusal_suppression_heads.json
+
+python3 run.py api_inference \
+    --json_file="outputs/refusal/Skywork-OR1-7B/ablating_outputs_003.json" \
+    --output_file="outputs/refusal/Skywork-OR1-7B/ablating_outputs_003.json" \
+    --base_url="http://0.0.0.0:8001/v1" \
+    --api_key="123" \
+    --model="unsloth/Llama-Guard-4-12B" \
+    --max_tokens=16 \
+    --temperature=0.7 \
+    --request_time=0.0 \
+    --truncated_num=40000 \
+    --max_concurrent=1000 \
+    --generation_mode "eval" \
+    --max_retries=5
+
+CUDA_VISIBLE_DEVICES=3 python3 run.py ablating_head_generation \
+    --model_name Skywork/Skywork-OR1-7B \
+    --json_path outputs/refusal/Skywork-OR1-7B/jbbench.json \
+    --batch_size 8 \
+    --truncate_num 200 \
+    --top_n_ablation 78 \
+    --save_path outputs/refusal/Skywork-OR1-7B/ablating_outputs_01.json \
+    --max_new_tokens 4096 \
+    --temperature 0.7 \
+    --do_sample True \
+    --item_type "original_item" \
+    --thinking_portion 0 \
+    --head_ablation_path outputs/refusal/Skywork-OR1-7B/refusal_suppression_heads.json
+
+python3 run.py api_inference \
+    --json_file="outputs/refusal/Skywork-OR1-7B/ablating_outputs_01.json" \
+    --output_file="outputs/refusal/Skywork-OR1-7B/ablating_outputs_01.json" \
+    --base_url="http://0.0.0.0:8001/v1" \
+    --api_key="123" \
+    --model="unsloth/Llama-Guard-4-12B" \
+    --max_tokens=16 \
+    --temperature=0.7 \
+    --request_time=0.0 \
+    --truncated_num=40000 \
+    --max_concurrent=1000 \
+    --generation_mode "eval" \
+    --max_retries=5
+    
+python3 run.py count_safety \
+    --json_file="outputs/refusal/Skywork-OR1-7B/ablating_outputs_0015.json" \
+    --item_type "original_item"
+
+python3 run.py count_safety \
+    --json_file="outputs/refusal/Skywork-OR1-7B/ablating_outputs_003.json" \
+    --item_type "original_item"
+
+python3 run.py count_safety \
+    --json_file="outputs/refusal/Skywork-OR1-7B/ablating_outputs_01.json" \
+    --item_type "original_item"
+
+
+CUDA_VISIBLE_DEVICES=3 python3 run.py ablating_head_generation \
+    --model_name Skywork/Skywork-OR1-7B \
+    --json_path "outputs/inference/DeepSeek-R1-Distill-Llama-8B/wj.json" \
+    --batch_size 8 \
+    --truncate_num 200 \
+    --top_n_ablation 12 \
+    --save_path outputs/refusal/Skywork-OR1-7B/ablating_outputs_0015_wj.json \
+    --max_new_tokens 4096 \
+    --temperature 0.7 \
+    --do_sample True \
+    --item_type "original_item" \
+    --thinking_portion 0 \
+    --head_ablation_path outputs/refusal/Skywork-OR1-7B/refusal_suppression_heads.json
+
+python3 run.py api_inference \
+    --json_file="outputs/refusal/Skywork-OR1-7B/ablating_outputs_0015_wj.json" \
+    --output_file="outputs/refusal/Skywork-OR1-7B/ablating_outputs_0015_wj.json" \
+    --base_url="http://0.0.0.0:8001/v1" \
+    --api_key="123" \
+    --model="unsloth/Llama-Guard-4-12B" \
+    --max_tokens=16 \
+    --temperature=0.7 \
+    --request_time=0.0 \
+    --truncated_num=40000 \
+    --max_concurrent=1000 \
+    --generation_mode "eval" \
+    --max_retries=5
+
+CUDA_VISIBLE_DEVICES=3 python3 run.py ablating_head_generation \
+    --model_name Skywork/Skywork-OR1-7B \
+    --json_path "outputs/inference/DeepSeek-R1-Distill-Llama-8B/wj.json" \
+    --batch_size 8 \
+    --truncate_num 200 \
+    --top_n_ablation 24 \
+    --save_path outputs/refusal/Skywork-OR1-7B/ablating_outputs_003_wj.json \
+    --max_new_tokens 4096 \
+    --temperature 0.7 \
+    --do_sample True \
+    --item_type "original_item" \
+    --thinking_portion 0 \
+    --head_ablation_path outputs/refusal/Skywork-OR1-7B/refusal_suppression_heads.json
+
+python3 run.py api_inference \
+    --json_file="outputs/refusal/Skywork-OR1-7B/ablating_outputs_003_wj.json" \
+    --output_file="outputs/refusal/Skywork-OR1-7B/ablating_outputs_003_wj.json" \
+    --base_url="http://0.0.0.0:8001/v1" \
+    --api_key="123" \
+    --model="unsloth/Llama-Guard-4-12B" \
+    --max_tokens=16 \
+    --temperature=0.7 \
+    --request_time=0.0 \
+    --truncated_num=40000 \
+    --max_concurrent=1000 \
+    --generation_mode "eval" \
+    --max_retries=5
+    
+python3 run.py count_safety \
+    --json_file="outputs/refusal/Skywork-OR1-7B/ablating_outputs_0015_wj.json" \
+    --item_type "original_item"
+
+python3 run.py count_safety \
+    --json_file="outputs/refusal/Skywork-OR1-7B/ablating_outputs_003_wj.json" \
+    --item_type "original_item"

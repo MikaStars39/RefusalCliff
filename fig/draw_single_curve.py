@@ -8,7 +8,7 @@ import numpy as np
 import scienceplots
 plt.style.use(['science', 'no-latex', 'retro'])
 
-# Override specific settings to maintain our preferences
+    # Override specific settings to maintain our preferences
 plt.rcParams.update({
     'font.family': 'serif',
     'font.serif': ['Georgia', 'Times New Roman', 'DejaVu Serif', 'Liberation Serif', 'serif'],
@@ -19,12 +19,12 @@ plt.rcParams.update({
     'ytick.labelsize': 12,
     'legend.fontsize': 10,
     'figure.titlesize': 18,
-    'axes.facecolor': '#f8f8f8',  # Light gray background for plot area
+    'axes.facecolor': 'white',  # White background for plot area
     'figure.facecolor': 'white',  # White background for figure
     'savefig.facecolor': 'white',
     'savefig.edgecolor': 'none',
-    'axes.spines.top': True,  # Show top spine
-    'axes.spines.right': True,  # Show right spine
+    'axes.spines.top': False,  # Hide top spine
+    'axes.spines.right': False,  # Hide right spine
     'xtick.direction': 'out',  # Ticks point outward
     'ytick.direction': 'out',  # Ticks point outward
     'xtick.minor.visible': False,  # Hide minor x ticks
@@ -66,7 +66,7 @@ def plot_single_curve_with_references(
     # Create figure with styling
     fig, ax = plt.subplots(figsize=figsize)
     fig.patch.set_facecolor('white')  # White background for figure
-    ax.set_facecolor('#f8f8f8')  # Light gray background for plot area
+    ax.set_facecolor('white')  # White background for plot area
     
     # Handle different result formats
     if isinstance(results, dict):
@@ -88,7 +88,7 @@ def plot_single_curve_with_references(
     sample_values = result_tensor[sample_positions].numpy()
     
     # Plot only the sampled points connected directly
-    main_color = colors[0]
+    main_color = "#FF99CC"
     ax.plot(sample_positions, sample_values, 
            label=curve_label, 
            color=main_color, 
@@ -97,60 +97,57 @@ def plot_single_curve_with_references(
     
     # Add circular markers at sampled positions
     ax.scatter(sample_positions, sample_values,
-             facecolor=main_color, edgecolor='black', s=25, 
-             linewidth=0.8, zorder=6, alpha=0.9)
+             facecolor=main_color, edgecolor='none', s=15, 
+             zorder=6, alpha=0.9)
     
     # Add horizontal reference lines
-    ax.axhline(y=normal_refusal_score, color='#d62728', linestyle='--', 
-               linewidth=1.5, alpha=0.7, label='Normal Refusal Score')
-    ax.axhline(y=safe_model_plateau, color='#2ca02c', linestyle='--', 
-               linewidth=1.5, alpha=0.7, label='Safe Model Plateau')
+    ax.axhline(y=normal_refusal_score, color='#808080', linestyle='--', 
+               linewidth=1.5, alpha=0.7, label='Normal Prompts')
+    ax.axhline(y=safe_model_plateau, color='#67AB9F', linestyle='--', 
+               linewidth=1.5, alpha=0.7, label='Safe Plateau')
     
     # Configure plot styling
-    ax.set_title(title, fontsize=12, fontweight='normal', color='#333333', pad=10)
-    ax.set_xlabel('Normalized Position', fontsize=10, fontweight='normal', color='#333333')
-    ax.set_ylabel('Refusal Score', fontsize=10, fontweight='normal', color='#333333')
+    ax.set_title(title, fontsize=10, fontweight='normal', color='black', pad=10)
+    ax.set_xlabel('Normalized Position', fontsize=10, fontweight='normal', color='black')
+    ax.set_ylabel('Refusal Score', fontsize=10, fontweight='normal', color='black')
     
-    # Add grayer background for the last 5% of x-axis (right 5%)
-    ax.axvspan(95, 105, alpha=0.2, color='#c8c8c8', zorder=0)  # More subtle background
+    # Add light orange background from 95 to 105
+    ax.axvspan(95, 105, alpha=0.25, color='#FFF0E6', zorder=0)  # Light orange background
     
     # Set axis limits and ticks
     ax.set_xlim(-5, 105)  # Start from -5 for better spacing
-    ax.set_ylim(-0.1, 0.75)
+    ax.set_ylim(0, 1.0)
     
     # Customize ticks with light colors
     ax.tick_params(axis='both', which='major', labelsize=10, width=0.8, 
-                   color='#cccccc', labelcolor='#666666')
+                   color='#cccccc', labelcolor='black')
     ax.set_xticks(np.arange(0, 105, 20))  # This will show 0, 20, 40, 60, 80, 100
     ax.set_yticks(np.arange(0, 1.0, 0.2))  # This will show 0.0, 0.2, 0.4, 0.6, 0.8
     
     # Add grid with subtle styling
     ax.grid(True, alpha=0.4, linestyle='-', linewidth=0.5, color='#dddddd')
     
-    # Configure legend with darker background, no border, and rounded corners
+    # Configure legend with white background, positioned in top-left corner
     legend = ax.legend(
         frameon=True, 
         fancybox=True,  # Enable rounded corners
         edgecolor='none',  # No border
-        facecolor='#e8e8e8',  # Darker gray background
+        facecolor='white',  # White background
         framealpha=0.95,
         fontsize=8,
-        loc=(0.05, 0.60),  # Position away from top-left corner
+        loc='upper left',  # Position in top-left corner
         borderpad=1.0,  # Increase padding between text and legend border
-        handletextpad=0.8,  # Space between legend markers and text
+        handletextpad=0.5,  # Space between legend markers and text
+        handlelength=1.0,  # Length of legend lines (shorter)
         columnspacing=1.0  # Space between columns if multiple
     )
     legend.get_frame().set_linewidth(0)
     
-    # Set light colored spines for all four sides
-    ax.spines['left'].set_color('#cccccc')
-    ax.spines['bottom'].set_color('#cccccc')
-    ax.spines['top'].set_color('#cccccc')
-    ax.spines['right'].set_color('#cccccc')
+    # Set black colored spines for left and bottom only (top and right are already hidden)
+    ax.spines['left'].set_color('black')
+    ax.spines['bottom'].set_color('black')
     ax.spines['left'].set_linewidth(0.8)
     ax.spines['bottom'].set_linewidth(0.8)
-    ax.spines['top'].set_linewidth(0.8)
-    ax.spines['right'].set_linewidth(0.8)
     
     # Adjust layout
     plt.tight_layout()

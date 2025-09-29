@@ -6,17 +6,17 @@ python3 run.py collect_refusal \
     --json_path outputs/refusal/DeepSeek-R1-Distill-Qwen-14B/advbench.json \
     --save_path outputs/refusal/DeepSeek-R1-Distill-Qwen-14B/refusal.json
 
-CUDA_VISIBLE_DEVICES=0 python3 run.py extract_hidden_states \
+CUDA_VISIBLE_DEVICES=0,1,2,3 python3 run.py extract_hidden_states \
     --model_path "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B" \
     --json_path outputs/refusal/DeepSeek-R1-Distill-Qwen-14B/no_refusal.json \
     --save_path outputs/refusal/DeepSeek-R1-Distill-Qwen-14B/no_refusal.pt \
-    --layer_index 28
+    --layer_index 48
 
-CUDA_VISIBLE_DEVICES=0 python3 run.py extract_hidden_states \
+CUDA_VISIBLE_DEVICES=0,1,2,3 python3 run.py extract_hidden_states \
     --model_path "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B" \
     --json_path outputs/refusal/DeepSeek-R1-Distill-Qwen-14B/refusal.json \
     --save_path outputs/refusal/DeepSeek-R1-Distill-Qwen-14B/refusal.pt \
-    --layer_index 28
+    --layer_index 48
 
 python3 run.py train_prober \
     --or_path outputs/refusal/DeepSeek-R1-Distill-Qwen-14B/no_refusal.pt \

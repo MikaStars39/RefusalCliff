@@ -58,7 +58,8 @@ def extract_hidden_states(
         model_path,  # Use the parameter instead of hardcoded path
         device_map="auto",
         torch_dtype=torch.bfloat16,
-    )
+        attn_implementation="flash_attention_2",
+    ).eval()
     tokenizer = AutoTokenizer.from_pretrained(model_path)  # Use the parameter
 
     with open(json_path, "r") as f:
@@ -66,12 +67,11 @@ def extract_hidden_states(
 
     tensor_list = []
 
-    for idx, item in enumerate(jbbench_distill_llama_8b):
+    for idx, item in tqdm(enumerate(jbbench_distill_llama_8b), desc="Extracting hidden states"):
 
         prompt = item["original_item"]["prompt"]
         thinking = item["original_item"]["thinking"]
         close_marker = "\n</think>\n\n"
-        response = item["original_item"]["response"]
 
         messages_full = [
             {"role": "user", "content": prompt},
@@ -83,30 +83,18 @@ def extract_hidden_states(
         )
         full_input = chat_template + "\n\n" + thinking + close_marker
         inputs = tokenizer(full_input, return_tensors="pt").to(model.device)
-
         outputs = model(**inputs, output_hidden_states=True)
 
         hidden_states_between_think = outputs.hidden_states
-
         chosen_layer = int(layer_index)
+        layer_h = hidden_states_between_think[chosen_layer].to(torch.float32).cpu()
 
-        layer_h = hidden_states_between_think[chosen_layer].to(torch.float32)
         seq_len = layer_h.shape[1]
         if seq_len == 0:
             print(f"skip idx={idx} empty thinking span")
             continue
         
         feat = layer_h[:, -1, :].squeeze(0)
-
-        # check if nan in feat
-        if torch.isnan(feat).any():
-            print(f"skip idx={idx} nan feature")
-            continue
-
-        if not torch.isfinite(feat).all():
-            print(f"skip idx={idx} non-finite feature")
-            continue
-
         tensor_list.append(feat)
 
         if max_items is not None and len(tensor_list) >= max_items:
@@ -165,6 +153,7 @@ def test_prober(
             if random_heads:
                 # shuffle the head_ablation_data
                 random.shuffle(head_ablation_data)
+                print(f"Shuffled head_ablation_data")
         add_scale(
             model, 
             head_ablation_data[:top_n_ablation], 0, 

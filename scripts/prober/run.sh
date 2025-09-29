@@ -21,3 +21,18 @@ python3 scripts/prober/generate_prober_scripts.py \
     --model_dir_name "Qwen3-30B-A3B-Thinking-2507" \
     --model_path "Qwen/Qwen3-30B-A3B-Thinking-2507" \
     --layer_index 48
+
+python3 scripts/prober/generate_prober_scripts.py \
+    --model_dir_name "Phi-4-mini-reasoning" \
+    --model_path "microsoft/Phi-4-mini-reasoning" \
+    --layer_index 32
+
+python3 scripts/prober/generate_prober_scripts.py \
+    --model_dir_name "RealSafe-R1-8B" \
+    --model_path "RealSafe/RealSafe-R1-8B" \
+    --layer_index 32
+
+python3 scripts/prober/generate_prober_scripts.py \
+    --model_dir_name "RealSafe-R1-7B" \
+    --model_path "RealSafe/RealSafe-R1-7B" \
+    --layer_index 28
