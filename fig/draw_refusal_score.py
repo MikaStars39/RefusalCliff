@@ -171,31 +171,25 @@ def plot_multiple_prober_results(
     ax.set_xlim(-5, 105)  # Start from -5 for better spacing
     ax.set_ylim(0, 1)
     
-    # Customize ticks with black labels
+    # Customize ticks with light gray tick lines and black labels
     ax.tick_params(axis='both', which='major', labelsize=10, width=0.8, 
-                   color='black', labelcolor='black')
+                   color='lightgray', labelcolor='black')
     ax.set_xticks(np.arange(0, 105, 20))  # This will show 0, 20, 40, 60, 80, 100
     ax.set_yticks(np.arange(0, 1.0, 0.2))  # This will show 0.0, 0.2, 0.4, 0.6, 0.8
     
     # Add grid with subtle styling (this will include vertical line at 100)
-    ax.grid(True, alpha=0.4, linestyle='-', linewidth=0.5, color='black')
+    ax.grid(True, alpha=0.4, linestyle='-', linewidth=0.5, color='lightgray')
     
-    # Configure legend with white background, positioned in the upper left corner
+    # Configure legend without border, positioned in the upper left corner
     legend = ax.legend(
-        frameon=True, 
-        fancybox=True,  # Enable rounded corners
-        edgecolor='black',  # Black border
-        facecolor='white',  # White background
-        framealpha=0.95,
+        frameon=False,  # Remove border
         fontsize=8,  # Smaller font size
         loc='upper left',  # Position in upper left corner
         ncol=1,  # Single column for better fit in corner
-        borderpad=1.0,  # Increase padding between text and legend border
         handletextpad=0.5,  # Space between legend markers and text
         handlelength=1.0,  # Length of legend lines (shorter)
         columnspacing=1.0  # Space between columns if multiple
     )
-    legend.get_frame().set_linewidth(1.0)
     
     # Set black colored spines for left and bottom only
     ax.spines['left'].set_color('black')

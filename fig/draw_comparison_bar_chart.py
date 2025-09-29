@@ -24,8 +24,8 @@ plt.rcParams.update({
     'figure.facecolor': 'white',  # White background for figure
     'savefig.facecolor': 'white',
     'savefig.edgecolor': 'none',
-    'axes.spines.top': True,  # Show top spine
-    'axes.spines.right': True,  # Show right spine
+    'axes.spines.top': False,  # Hide top spine
+    'axes.spines.right': False,  # Hide right spine
     'xtick.direction': 'out',  # Ticks point outward
     'ytick.direction': 'out',  # Ticks point outward
     'xtick.minor.visible': False,  # Hide minor x ticks
@@ -72,7 +72,7 @@ def plot_comparison_bar_chart(
     ax.set_facecolor('white')  # White background for plot area
     
     # Add grid first so it appears behind bars
-    ax.grid(True, alpha=0.3, linestyle='-', linewidth=0.5, color='#dddddd', axis='y', zorder=0)
+    ax.grid(True, alpha=0.9, linestyle='-', linewidth=0.5, color='#dddddd', axis='y', zorder=0)
     
     # Define consistent colors for each condition (position in tuple)
     if colors is None:
@@ -101,7 +101,7 @@ def plot_comparison_bar_chart(
             bar = ax.bar(x_pos, value, 
                         width=bar_width,
                         color=condition_colors[condition_idx % len(condition_colors)],
-                        alpha=0.5,  # No transparency
+                        alpha=0.9,  # No transparency
                         edgecolor='black',  # Black edges
                         linewidth=0.8,  # Edge line width
                         zorder=3)
@@ -113,7 +113,7 @@ def plot_comparison_bar_chart(
     legend_elements = [
         Rectangle((0, 0), 1, 1, 
                  facecolor=condition_colors[i % len(condition_colors)], 
-                 alpha=0.5,  # Match bar transparency
+                 alpha=0.9,  # Match bar transparency
                  edgecolor='black',  # Match bar edges
                  linewidth=0.8,  # Match bar edge width
                  label=legend_labels[i])
@@ -148,7 +148,7 @@ def plot_comparison_bar_chart(
         frameon=False,  # Remove frame/border
         fontsize=10,
         loc='lower center',
-        bbox_to_anchor=(0.5, -0.3),  # Move up slightly
+        bbox_to_anchor=(0.5, -0.2),  # Move up slightly
         ncol=min(n_values, 5),  # Max 4 columns
         handlelength=1.0,  # Make squares more compact
         handletextpad=0.5,  # Reduce space between square and text
@@ -158,19 +158,18 @@ def plot_comparison_bar_chart(
     for text in legend.get_texts():
         text.set_color('black')
     
-    # Customize ticks with black text
+    # Customize ticks with black text, remove top and right ticks
     ax.tick_params(axis='both', which='major', labelsize=10, width=0.8, 
                    color='#cccccc', labelcolor='black')
+    ax.tick_params(top=False, right=False)  # Remove top and right ticks
     
-    # Set light colored spines for all four sides
-    ax.spines['left'].set_color('#cccccc')
-    ax.spines['bottom'].set_color('#cccccc')
-    ax.spines['top'].set_color('#cccccc')
-    ax.spines['right'].set_color('#cccccc')
+    # Set black colored spines for left and bottom sides only
+    ax.spines['left'].set_color('black')
+    ax.spines['bottom'].set_color('black')
+    ax.spines['top'].set_visible(False)  # Hide top spine
+    ax.spines['right'].set_visible(False)  # Hide right spine
     ax.spines['left'].set_linewidth(0.8)
     ax.spines['bottom'].set_linewidth(0.8)
-    ax.spines['top'].set_linewidth(0.8)
-    ax.spines['right'].set_linewidth(0.8)
     
     # Adjust layout to accommodate bottom legend
     plt.tight_layout()
@@ -228,17 +227,24 @@ def plot_comparison_from_json(
 if __name__ == "__main__":
     # Example data - each model has multiple values
     data = {
-        "Baseline": (0.49, 0.4234, 0.3643, 0.4976, 0.4406),
-        "Top 3%": (0.542, 0.4893, 0.4008, 0.56, 0.50),
-        "Top 10%": (0.66, 0.5405, 0.5616, 0.63, 0.57),
-        "Random 10%": (0.4976, 0.4406, 0.29, 0.48, 0.43),
+        "Baseline": (0.34, 0.35, 0.19, 0.16),
+        "Top 1%": (0.215, 0.23, 0.085, 0.15),
+        "Top 3%": (0.16, 0.22, 0.07, 0.085),
+        "Random 3%": (0.34, 0.31, 0.20, 0.18),
+    }
+
+    data = {
+        "Baseline": (0.49, 0.4234, 0.3643, 0.4976),
+        "Top 3%": (0.542, 0.4893, 0.4008, 0.56),
+        "Top 10%": (0.66, 0.5405, 0.5616, 0.63),
+        "Random 10%": (0.4976, 0.4406, 0.29, 0.48),
     }
 
     # data = {
-    #     "Baseline": (0.34, 0.352, 0.19, 0.144, 0.154),
-    #     "Top 1%": (0.30, 0.31, 0.17, 0.13, 0.14),
-    #     "Top 3%": (0.16, 0.10, 0.09, 0.04, 0.02),
-    #     "Random 3%": (0.35, 0.34, 0.22, 0.17, 0.16),
+    #     "Baseline": (0.195, 0.23, 0.19, 0.175),
+    #     "Top 1%": (0.175, 0.225, 0.085, 0.12),
+    #     "Top 3%": (0.135, 0.215, 0.1, 0.11),
+    #     "Random 3%": (0.190, 0.21, 0.20, 0.18),
     # }
     
     # Create output directory
@@ -247,10 +253,10 @@ if __name__ == "__main__":
     # Plot the comparison bar chart
     plot_comparison_bar_chart(
         data=data,
-        save_path="outputs/fig/model_comparison_improvement.pdf",
-        title="Head Ablation",
+        save_path="outputs/fig/model_comparison_improvement_prober.pdf",
+        title="Refusal Score",
         ylabel="Refusal Score",
-        figsize=(6, 3.2),
-        legend_labels=["R1-7B", "OR1-7B", "R1-8B", "R1-14B", "Hermes-14B"],
-        colors=["#97D077", "#7EA6E0", "#67AB9F", "#67AB9F", "#B5739D"]  # Custom colors: blue, red, green
+        figsize=(4.5, 4),
+        legend_labels=["R1-7B", "OR1-7B", "R1-8B", "R1-14B"],
+        colors=["#FF99CC", "#7EA6E0", "#67AB9F", "#97D077"]  # Custom colors: blue, red, green
     )

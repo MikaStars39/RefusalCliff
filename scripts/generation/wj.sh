@@ -1,7 +1,7 @@
 CUDA_VISIBLE_DEVICES=5 vllm serve "deepseek-ai/DeepSeek-R1-Distill-Llama-8B" --max-model-len 32768
 
 python3 run.py process_data \
-    --dataset_name "walledai/JailbreakBench" \
+    --dataset_name "allenai/wildjailbreak \
     --split "train" \
     --subset_name "eval" \
     --output_file "outputs/inference/DeepSeek-R1-Distill-Llama-8B/wj.json"
@@ -43,7 +43,7 @@ python3 run.py count_safety \
 CUDA_VISIBLE_DEVICES=5 vllm serve "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B" --max-model-len 32768
 
 python3 run.py process_data \
-    --dataset_name "walledai/JailbreakBench" \
+    --dataset_name "allenai/wildjailbreak \
     --split "train" \
     --subset_name "eval" \
     --output_file "outputs/inference/DeepSeek-R1-Distill-Qwen-7B/wj.json"
@@ -85,7 +85,7 @@ python3 run.py count_safety \
 CUDA_VISIBLE_DEVICES=4,5 vllm serve "NousResearch/Hermes-4-14B" --max-model-len 32768 --tensor_parallel_size 2
 
 python3 run.py process_data \
-    --dataset_name "walledai/JailbreakBench" \
+    --dataset_name "allenai/wildjailbreak" \
     --split "train" \
     --subset_name "eval" \
     --output_file "outputs/inference/Hermes-4-14B/wj.json"
@@ -130,7 +130,7 @@ python3 run.py count_safety \
 CUDA_VISIBLE_DEVICES=4,5 vllm serve "Qwen/QwQ-32B" --max-model-len 32768 --tensor_parallel_size 2
 
 python3 run.py process_data \
-    --dataset_name "walledai/JailbreakBench" \
+    --dataset_name "allenai/wildjailbreak \
     --split "train" \
     --subset_name "eval" \
     --output_file "outputs/inference/QwQ-32B/wj.json"
@@ -173,7 +173,7 @@ python3 run.py count_safety \
 CUDA_VISIBLE_DEVICES=5 vllm serve "Qwen/Qwen3-4B-Thinking-2507" --max-model-len 32768
 
 python3 run.py process_data \
-    --dataset_name "walledai/JailbreakBench" \
+    --dataset_name "allenai/wildjailbreak \
     --split "train" \
     --subset_name "eval" \
     --output_file "outputs/inference/Qwen3-4B-Thinking-2507/wj.json"
@@ -216,7 +216,7 @@ python3 run.py count_safety \
 CUDA_VISIBLE_DEVICES=5 vllm serve "Skywork/Skywork-OR1-7B" --max-model-len 32768
 
 python3 run.py process_data \
-    --dataset_name "walledai/JailbreakBench" \
+    --dataset_name "allenai/wildjailbreak \
     --split "train" \
     --subset_name "eval" \
     --output_file "outputs/inference/Skywork-OR1-7B/wj.json"
@@ -259,7 +259,7 @@ python3 run.py count_safety \
 CUDA_VISIBLE_DEVICES=4,5 vllm serve "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B" --max-model-len 32768 --tensor_parallel_size 2
 
 python3 run.py process_data \
-    --dataset_name "walledai/JailbreakBench" \
+    --dataset_name "allenai/wildjailbreak \
     --split "train" \
     --subset_name "eval" \
     --output_file "outputs/inference/DeepSeek-R1-Distill-Qwen-14B/wj.json"
@@ -302,7 +302,7 @@ python3 run.py count_safety \
 CUDA_VISIBLE_DEVICES=4,5 vllm serve "microsoft/Phi-4-reasoning" --max-model-len 32768 --tensor_parallel_size 2
 
 python3 run.py process_data \
-    --dataset_name "walledai/JailbreakBench" \
+    --dataset_name "allenai/wildjailbreak \
     --split "train" \
     --subset_name "eval" \
     --output_file "outputs/inference/Phi-4-reasoning/wj.json"
@@ -345,7 +345,7 @@ python3 run.py count_safety \
 CUDA_VISIBLE_DEVICES=5 vllm serve "microsoft/Phi-4-mini-reasoning" --max-model-len 32768
 
 python3 run.py process_data \
-    --dataset_name "walledai/JailbreakBench" \
+    --dataset_name "allenai/wildjailbreak \
     --split "train" \
     --subset_name "eval" \
     --output_file "outputs/inference/Phi-4-mini-reasoning/wj.json"
@@ -388,7 +388,7 @@ python3 run.py count_safety \
 CUDA_VISIBLE_DEVICES=5 vllm serve "RealSafe/RealSafe-R1-8B" --max-model-len 32768
 
 python3 run.py process_data \
-    --dataset_name "walledai/JailbreakBench" \
+    --dataset_name "allenai/wildjailbreak \
     --split "train" \
     --subset_name "eval" \
     --output_file "outputs/inference/RealSafe-R1-8B/wj.json"
@@ -431,7 +431,7 @@ python3 run.py count_safety \
 CUDA_VISIBLE_DEVICES=5 vllm serve "RealSafe/RealSafe-R1-7B" --max-model-len 32768
 
 python3 run.py process_data \
-    --dataset_name "walledai/JailbreakBench" \
+    --dataset_name "allenai/wildjailbreak \
     --split "train" \
     --subset_name "eval" \
     --output_file "outputs/inference/RealSafe-R1-7B/wj.json"

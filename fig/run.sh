@@ -11,15 +11,27 @@ python3 fig/draw_layer_score.py \
     --save_path outputs/fig/layers_prober_8b.pdf \
     --title "Layer-wise Refusal Score, R1-8B"
 
+python3 fig/draw_layer_score.py \
+    --pt_paths outputs/fig/llama_ablate.json \
+    --figsize "(3.3, 3.0)" \
+    --save_path outputs/fig/llama_ablate_8b.pdf \
+    --title "R1-8B, Ablation"
+
+python3 fig/draw_layer_score.py \
+    --pt_paths outputs/fig/qwen_ablate.json \
+    --figsize "(3.3, 3.0)" \
+    --save_path outputs/fig/qwen_ablate_7b.pdf \
+    --title "R1-7B, Ablation"
+
 python3 fig/draw_refusal_score.py \
     --pt_paths outputs/fig/pt/pt_files.json \
-    --figsize "(5, 3.5)" \
+    --figsize "(5, 2.8)" \
     --save_path outputs/fig/pt_refusal_score.pdf \
     --title "Refusal Score"
 
 python3 fig/draw_refusal_score.py \
     --pt_paths outputs/fig/pt/instruct_files.json \
-    --figsize "(5, 3.5)" \
+    --figsize "(5, 2.8)" \
     --save_path outputs/fig/instruct_prober.pdf \
     --title "Refusal Score of Safe Models"
 
